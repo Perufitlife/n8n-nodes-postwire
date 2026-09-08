@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-postwire",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Publish one idea natively to TikTok, Instagram, YouTube, LinkedIn, X, Bluesky, Mastodon, Telegram, Discord and Reddit from n8n — a different post written for each network, via PostWire.",
   "keywords": [
     "n8n-community-node-package",
@@ -15,18 +15,38 @@
   ],
   "license": "MIT",
   "homepage": "https://postwire.io",
-  "author": { "name": "PostWire", "email": "privacy@postwire.io" },
-  "repository": { "type": "git", "url": "git+https://github.com/Perufitlife/n8n-nodes-postwire.git" },
+  "author": {
+    "name": "PostWire",
+    "email": "privacy@postwire.io"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Perufitlife/n8n-nodes-postwire.git"
+  },
   "main": "index.js",
   "scripts": {
     "prepublishOnly": "node -e \"require('./nodes/PostWire/PostWire.node.js');require('./credentials/PostWireApi.credentials.js');console.log('load check ok')\""
   },
-  "files": ["index.js", "nodes", "credentials", "LICENSE.md", "README.md"],
+  "files": [
+    "index.js",
+    "nodes",
+    "credentials",
+    "LICENSE.md",
+    "README.md"
+  ],
   "n8n": {
     "n8nNodesApiVersion": 1,
-    "credentials": ["credentials/PostWireApi.credentials.js"],
-    "nodes": ["nodes/PostWire/PostWire.node.js"]
+    "credentials": [
+      "credentials/PostWireApi.credentials.js"
+    ],
+    "nodes": [
+      "nodes/PostWire/PostWire.node.js"
+    ]
   },
-  "peerDependencies": { "n8n-workflow": "*" },
-  "engines": { "node": ">=18.10" }
+  "peerDependencies": {
+    "n8n-workflow": "*"
+  },
+  "engines": {
+    "node": ">=18.10"
+  }
 }

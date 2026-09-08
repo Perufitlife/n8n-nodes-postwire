@@ -9,7 +9,7 @@ class PostWireApi {
   constructor() {
     this.name = 'postWireApi';
     this.displayName = 'PostWire API';
-    this.documentationUrl = 'https://postwire.io/mcp/';
+    this.documentationUrl = 'https://postwire.io/n8n-social-media-automation/';
     this.properties = [
       {
         displayName: 'API Key',

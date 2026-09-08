@@ -278,8 +278,23 @@ class PostWire {
 
         // One n8n item per network, so a Filter or IF node downstream can act on the failures alone
         // instead of unpacking an array by hand.
-        for (const res of r.results || [r]) {
+        const results = r.results || [r];
+        for (const res of results) {
           out.push({ json: res, pairedItem: { item: i } });
+        }
+        // A 200 whose every network failed used to leave the node green with the error buried in
+        // the output, so a scheduled flow could publish nothing for weeks and never say so. If not
+        // one network went out, that is a failed execution.
+        const failed = results.filter((res) => res && res.ok === false);
+        if (results.length && failed.length === results.length) {
+          const why = failed.map((f) => `${f.platform || "?"}: ${f.error || f.code || "failed"}`).join("; ");
+          const limited = failed.find((f) => f.code === "brand_limit_reached" || f.upgrade_url);
+          throw new NodeOperationError(
+            this.getNode(),
+            `PostWire published to none of the ${results.length} selected network(s). ${why}` +
+              (limited && limited.upgrade_url ? ` — upgrade: ${limited.upgrade_url}` : ""),
+            { itemIndex: i },
+          );
         }
       } catch (error) {
         if (this.continueOnFail()) {
