@@ -1,0 +1,37 @@
+# Runs n8n's own verification scanner against the published package.
+#
+# It lives here rather than on a laptop because the scanner breaks on Windows: it shells out to tar
+# with a Windows path and dies with "Cannot open: No such file or directory" long before it has an
+# opinion about the code. On Linux it actually lints the attested source.
+#
+# Kept as a permanent job, not a one-off: verification is a state the package has to stay in, and
+# the cheapest way to notice we fell out of it is to check on every release.
+name: n8n verification scan
+
+on:
+  workflow_run:
+    workflows: ['Publish to npm']
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to scan (blank = latest published)'
+        required: false
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Wait for the registry to serve the new version
+        run: sleep 30
+
+      - name: Scan
+        run: |
+          VER="${{ github.event.inputs.version }}"
+          PKG="n8n-nodes-postwire${VER:+@$VER}"
+          echo "scanning $PKG"
+          npx -y @n8n/scan-community-package "$PKG"
