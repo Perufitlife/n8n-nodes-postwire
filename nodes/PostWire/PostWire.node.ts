@@ -64,7 +64,7 @@ export class PostWire implements INodeType {
 						name: 'Get Account',
 						value: 'me',
 						description: 'Plan, usage this month and connected accounts',
-						action: 'Get the PostWire account',
+						action: 'Get account',
 					},
 					{
 						name: 'Publish',
@@ -346,7 +346,9 @@ export class PostWire implements INodeType {
 				// Our own checks already throw NodeOperationError with a message that names the fix;
 				// re-wrapping those would bury it. Anything else is an HTTP failure, and n8n renders
 				// a NodeApiError with the node's context instead of a bare fetch stack.
-				if (error instanceof NodeOperationError) throw error;
+				if (error instanceof NodeOperationError) {
+					throw new NodeOperationError(this.getNode(), (error as Error).message, { itemIndex: i });
+				}
 				throw new NodeApiError(this.getNode(), error as JsonObject, { itemIndex: i });
 			}
 		}
