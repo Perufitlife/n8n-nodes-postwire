@@ -33,11 +33,12 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           registry-url: https://registry.npmjs.org
 
-      # Trusted publishing needs a recent npm; the CLI bundled with Node 20 predates it.
-      - run: npm install -g npm@latest
+      # Trusted publishing needs npm >= 11.5.1 and Node 22 still ships npm 10. Pinned to 11 rather
+      # than @latest: npm 12 requires Node 22.22+/24.15+ and broke this job on the first run.
+      - run: npm install -g npm@11
 
       - run: npm ci
       - run: npm run build
