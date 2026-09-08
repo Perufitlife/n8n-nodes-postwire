@@ -2,6 +2,7 @@ import type {
 	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
+	Icon,
 	INodeProperties,
 } from 'n8n-workflow';
 
@@ -12,6 +13,9 @@ export class PostWireApi implements ICredentialType {
 	name = 'postWireApi';
 
 	displayName = 'PostWire API';
+
+	// Both variants: the badge is a dark square, which disappears against n8n's dark theme.
+	icon: Icon = { light: 'file:postwire.svg', dark: 'file:postwire.dark.svg' };
 
 	documentationUrl = 'https://postwire.io/n8n-social-media-automation/';
 

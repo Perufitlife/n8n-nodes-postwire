@@ -1,10 +1,13 @@
 import {
+	NodeApiError,
+	NodeConnectionTypes,
 	NodeOperationError,
 	type IDataObject,
 	type IExecuteFunctions,
 	type INodeExecutionData,
 	type INodeType,
 	type INodeTypeDescription,
+	type JsonObject,
 } from 'n8n-workflow';
 
 const BASE = 'https://postwire.io';
@@ -35,14 +38,16 @@ export class PostWire implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'PostWire',
 		name: 'postWire',
-		icon: 'file:postwire.svg',
+		icon: { light: 'file:postwire.svg', dark: 'file:postwire.dark.svg' },
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"]}}',
 		description: 'Publish one idea natively to every social network',
+		// An agent asking to post is exactly the use this node was built for.
+		usableAsTool: true,
 		defaults: { name: 'PostWire' },
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [{ name: 'postWireApi', required: true }],
 		requestDefaults: {
 			baseURL: BASE,
@@ -56,11 +61,10 @@ export class PostWire implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'Write a Post per Network',
-						value: 'generate',
-						description:
-							'One prompt in, a native draft out for each network — right length, hashtags and format per platform. Does not publish.',
-						action: 'Write a native post for each network',
+						name: 'Get Account',
+						value: 'me',
+						description: 'Plan, usage this month and connected accounts',
+						action: 'Get the PostWire account',
 					},
 					{
 						name: 'Publish',
@@ -69,22 +73,23 @@ export class PostWire implements INodeType {
 						action: 'Publish to social networks',
 					},
 					{
-						name: 'Write and Publish',
-						value: 'generateAndPublish',
-						description: 'Write a native draft per network, then publish them',
-						action: 'Write and publish in one step',
-					},
-					{
 						name: 'Schedule',
 						value: 'schedule',
 						description: 'Queue a post for a later time',
 						action: 'Schedule a post',
 					},
 					{
-						name: 'Get Account',
-						value: 'me',
-						description: 'Plan, usage this month and connected accounts',
-						action: 'Get the PostWire account',
+						name: 'Write a Post per Network',
+						value: 'generate',
+						description:
+							'One prompt in, a native draft out for each network — right length, hashtags and format per platform. Does not publish.',
+						action: 'Write a native post for each network',
+					},
+					{
+						name: 'Write and Publish',
+						value: 'generateAndPublish',
+						description: 'Write a native draft per network, then publish them',
+						action: 'Write and publish in one step',
 					},
 				],
 				default: 'generateAndPublish',
@@ -338,7 +343,11 @@ export class PostWire implements INodeType {
 					out.push({ json: { error: (error as Error).message }, pairedItem: { item: i } });
 					continue;
 				}
-				throw error;
+				// Our own checks already throw NodeOperationError with a message that names the fix;
+				// re-wrapping those would bury it. Anything else is an HTTP failure, and n8n renders
+				// a NodeApiError with the node's context instead of a bare fetch stack.
+				if (error instanceof NodeOperationError) throw error;
+				throw new NodeApiError(this.getNode(), error as JsonObject, { itemIndex: i });
 			}
 		}
 
