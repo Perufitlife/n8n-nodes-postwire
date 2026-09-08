@@ -1,0 +1,72 @@
+# n8n refuses to verify a community node published from a laptop: from 1 May 2026 every verified
+# node must carry an npm provenance statement, which only a trusted CI publisher can produce.
+# @n8n/scan-community-package stops at that check and never reads the code, so nothing else about
+# the package matters until this workflow is what publishes it.
+#
+# This uses npm trusted publishing (OIDC) rather than an NPM_TOKEN secret: npm trusts this workflow
+# instead of a long-lived token, and it attaches provenance on its own — no --provenance flag, no
+# secret to leak or rotate.
+#
+# ONE-TIME SETUP, on npmjs.com (cannot be done from the CLI):
+#   npmjs.com > n8n-nodes-postwire > Settings > Trusted publisher > GitHub Actions
+#     Organization or user: Perufitlife
+#     Repository:           n8n-nodes-postwire
+#     Workflow filename:    publish.yml
+#   Configurations created from 3 Sep 2026 default to "stage publish" only — tick the option that
+#   also permits a direct `npm publish`, or this workflow will stage the version instead of
+#   releasing it.
+name: Publish to npm
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # mints the OIDC token; without it npm falls back to unsigned publishing
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: https://registry.npmjs.org
+
+      # Trusted publishing needs a recent npm; the CLI bundled with Node 20 predates it.
+      - run: npm install -g npm@latest
+
+      - run: npm ci
+      - run: npm run build
+
+      # A version that is already on npm cannot be replaced, so fail before publishing rather than
+      # after, with a message that says what to do.
+      - name: Check this version is not already published
+        run: |
+          NAME=$(node -p "require('./package.json').name")
+          VER=$(node -p "require('./package.json').version")
+          if npm view "$NAME@$VER" version >/dev/null 2>&1; then
+            echo "$NAME@$VER is already on npm — bump the version before tagging."
+            exit 1
+          fi
+          echo "publishing $NAME@$VER"
+
+      - run: npm publish --access public
+
+      # Proof, not hope: ask npm whether the version it just accepted actually carries provenance.
+      # Publishing "successfully" without it is the exact failure this workflow exists to prevent.
+      - name: Verify provenance was attached
+        run: |
+          NAME=$(node -p "require('./package.json').name")
+          VER=$(node -p "require('./package.json').version")
+          sleep 20
+          if npm view "$NAME@$VER" --json | grep -qi '"attestations"'; then
+            echo "provenance attached to $NAME@$VER"
+          else
+            echo "PUBLISHED WITHOUT PROVENANCE — n8n verification will reject $NAME@$VER."
+            echo "Check the trusted publisher settings on npmjs.com for this package."
+            exit 1
+          fi

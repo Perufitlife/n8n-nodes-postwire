@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-postwire",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Publish one idea natively to TikTok, Instagram, YouTube, LinkedIn, X, Bluesky, Mastodon, Telegram, Discord and Reddit from n8n — a different post written for each network, via PostWire.",
   "keywords": [
     "n8n-community-node-package",
@@ -25,28 +25,33 @@
   },
   "main": "index.js",
   "scripts": {
-    "prepublishOnly": "node -e \"require('./nodes/PostWire/PostWire.node.js');require('./credentials/PostWireApi.credentials.js');console.log('load check ok')\""
+    "build": "tsc && node scripts-copy-icons.mjs",
+    "prepublishOnly": "npm run build"
   },
   "files": [
+    "dist",
     "index.js",
-    "nodes",
-    "credentials",
     "LICENSE.md",
     "README.md"
   ],
   "n8n": {
     "n8nNodesApiVersion": 1,
     "credentials": [
-      "credentials/PostWireApi.credentials.js"
+      "dist/credentials/PostWireApi.credentials.js"
     ],
     "nodes": [
-      "nodes/PostWire/PostWire.node.js"
+      "dist/nodes/PostWire/PostWire.node.js"
     ]
   },
   "peerDependencies": {
     "n8n-workflow": "*"
   },
   "engines": {
-    "node": ">=18.10"
+    "node": ">=20.15"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "n8n-workflow": "*",
+    "typescript": "^5.7.2"
   }
 }
