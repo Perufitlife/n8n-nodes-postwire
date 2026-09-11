@@ -166,19 +166,6 @@ export class PostWire implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Media Type',
-						name: 'mediaType',
-						type: 'options',
-						default: 'auto',
-						options: [
-							{ name: 'Detect From the URL', value: 'auto' },
-							{ name: 'Video', value: 'video' },
-							{ name: 'Image', value: 'image' },
-						],
-						description:
-							'Only needed when the link has no file extension — a signed CDN URL or a share link. Detection reads the extension and, when there is none, follows what the chosen networks require.',
-					},
-					{
 						displayName: 'Brand',
 						name: 'brandId',
 						type: 'string',
@@ -192,6 +179,19 @@ export class PostWire implements INodeType {
 						default: '',
 						description:
 							'A sentence describing how you want to sound, applied to every generated draft',
+					},
+					{
+						displayName: 'Media Type',
+						name: 'mediaType',
+						type: 'options',
+						default: 'auto',
+						options: [
+							{ name: 'Detect From the URL', value: 'auto' },
+							{ name: 'Video', value: 'video' },
+							{ name: 'Image', value: 'image' },
+						],
+						description:
+							'Only needed when the link has no file extension — a signed CDN URL or a share link. Detection reads the extension and, when there is none, follows what the chosen networks require.',
 					},
 					{
 						displayName: 'Title (YouTube)',
