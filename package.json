@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-postwire",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Publish one idea natively to TikTok, Instagram, YouTube, LinkedIn, X, Bluesky, Mastodon, Telegram, Discord and Reddit from n8n — a different post written for each network, via PostWire.",
   "keywords": [
     "n8n-community-node-package",

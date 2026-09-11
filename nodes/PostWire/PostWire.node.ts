@@ -166,6 +166,19 @@ export class PostWire implements INodeType {
 				},
 				options: [
 					{
+						displayName: 'Media Type',
+						name: 'mediaType',
+						type: 'options',
+						default: 'auto',
+						options: [
+							{ name: 'Detect From the URL', value: 'auto' },
+							{ name: 'Video', value: 'video' },
+							{ name: 'Image', value: 'image' },
+						],
+						description:
+							'Only needed when the link has no file extension — a signed CDN URL or a share link. Detection reads the extension and, when there is none, follows what the chosen networks require.',
+					},
+					{
 						displayName: 'Brand',
 						name: 'brandId',
 						type: 'string',
@@ -233,12 +246,28 @@ export class PostWire implements INodeType {
 				}
 
 				// Media rules, checked before the request so the message names the fix rather than the symptom.
-				const isVideo = /\.(mp4|mov|webm|m3u8|avi|mkv|m4v)(\?|$)/i.test(mediaUrl);
+				//
+				// The classifier used to answer only video-or-photo, and called everything without a
+				// known video extension a photo. A signed CDN link, one ending in #t=30, or a share URL
+				// with no extension at all was therefore "a photo", and the check below then threw and
+				// stopped the whole workflow — for a video that would have published perfectly well.
+				// Three answers now, and an unknown one is never grounds for refusing to try: the
+				// network is the thing that gets to decide, not a regular expression over a filename.
+				const declared = (opts.mediaType as string) || 'auto';
+				const kind: 'video' | 'image' | 'unknown' | 'none' = !mediaUrl
+					? 'none'
+					: declared === 'video' || declared === 'image'
+						? declared
+						: /\.(mp4|mov|webm|m3u8|avi|mkv|m4v)(\?|#|$)/i.test(mediaUrl)
+							? 'video'
+							: /\.(jpe?g|png|gif|webp|heic|heif|avif|bmp|tiff?)(\?|#|$)/i.test(mediaUrl)
+								? 'image'
+								: 'unknown';
 				const blocked = platforms.filter((p) => {
 					const need = needOf(p);
 					if (!need) return false;
-					if (need === 'video') return !isVideo;
-					return !mediaUrl;
+					if (need === 'video') return kind === 'image' || kind === 'none';
+					return kind === 'none';
 				});
 				if (blocked.length) {
 					const wantsVideo = blocked.some((p) => needOf(p) === 'video');
@@ -253,8 +282,12 @@ export class PostWire implements INodeType {
 					);
 				}
 
-				const photoUrl = mediaUrl && !isVideo ? mediaUrl : undefined;
-				const videoUrl = isVideo ? mediaUrl : undefined;
+				// An unrecognised link still has to go in one of the two fields the API has. Send it as the
+				// one the chosen networks need — that is the only reading of it that can succeed.
+				const treatAsVideo =
+					kind === 'video' || (kind === 'unknown' && platforms.some((p) => needOf(p) === 'video'));
+				const videoUrl = mediaUrl && treatAsVideo ? mediaUrl : undefined;
+				const photoUrl = mediaUrl && !treatAsVideo ? mediaUrl : undefined;
 
 				let perPlatform: IDataObject | undefined;
 				if (operation === 'generate' || operation === 'generateAndPublish') {
