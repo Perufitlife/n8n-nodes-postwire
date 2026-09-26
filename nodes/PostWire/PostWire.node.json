@@ -1,0 +1,14 @@
+{
+	"node": "n8n-nodes-postwire.postWire",
+	"nodeVersion": "2.0",
+	"codexVersion": "1.0",
+	"categories": ["Marketing", "Communication"],
+	"resources": {
+		"credentialDocumentation": [
+			{ "url": "https://postwire.io/n8n-social-media-automation/" }
+		],
+		"primaryDocumentation": [
+			{ "url": "https://github.com/Perufitlife/n8n-nodes-postwire#readme" }
+		]
+	}
+}
