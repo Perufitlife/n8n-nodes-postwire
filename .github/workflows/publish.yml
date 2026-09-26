@@ -41,7 +41,10 @@ jobs:
       - run: npm install -g npm@11
 
       - run: npm ci
+      # The same checks n8n's verification scanner applies, before anything reaches npm.
+      - run: npm run lint
       - run: npm run build
+      - run: npm test
 
       # A version that is already on npm cannot be replaced, so fail before publishing rather than
       # after, with a message that says what to do.
@@ -55,7 +58,12 @@ jobs:
           fi
           echo "publishing $NAME@$VER"
 
+      # package.json's prepublishOnly is n8n-node's guard, which refuses any `npm publish` that does
+      # not declare RELEASE_MODE. It is declared only here, so a publish from a laptop — which would
+      # ship without provenance and lose verification — fails instead of going out.
       - run: npm publish --access public
+        env:
+          RELEASE_MODE: 'true'
 
       # Proof, not hope: ask npm whether the version it just accepted actually carries provenance.
       # Publishing "successfully" without it is the exact failure this workflow exists to prevent.
