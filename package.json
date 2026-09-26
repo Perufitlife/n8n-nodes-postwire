@@ -14,7 +14,7 @@
     "scheduling"
   ],
   "license": "MIT",
-  "homepage": "https://postwire.io",
+  "homepage": "https://postwire.io/n8n-social-media-automation/#official-n8n-node",
   "author": {
     "name": "PostWire",
     "email": "privacy@postwire.io"
@@ -60,5 +60,8 @@
     "prettier": "^3.8.3",
     "release-it": "^20.2.0",
     "typescript": "^5.7.2"
+  },
+  "bugs": {
+    "url": "https://github.com/Perufitlife/n8n-nodes-postwire/issues"
   }
 }
