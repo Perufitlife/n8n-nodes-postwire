@@ -248,3 +248,17 @@ test('brand search lists brands with their networks', async () => {
 	const res = await new PostWire().methods.listSearch.searchBrands.call(c, 'ac');
 	assert.deepEqual(res.results, [{ name: 'Acme (X (Twitter), TikTok)', value: 'b1' }]);
 });
+
+test('a network the writer left empty is asked for once more, alone', async () => {
+	const c = ctx({
+		params: { resource: 'post', operation: 'generate', platforms: ['x', 'linkedin'], prompt: 'p', mediaSource: 'none', options: {} },
+		answer: (o, nth) =>
+			nth === 1
+				? ok({ drafts: { x: { text: 'a' }, linkedin: { text: '' } }, missing: ['linkedin'] })
+				: ok({ drafts: { linkedin: { text: 'long form' } } }),
+	});
+	const [out] = await run(c);
+	assert.deepEqual(c.calls[1].body.platforms, ['linkedin']);
+	assert.equal(out[0].json.drafts.linkedin.text, 'long form');
+	assert.equal(out[0].json.missing, undefined);
+});

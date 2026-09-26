@@ -412,3 +412,35 @@ export function draftsPreview(drafts: IDataObject): string {
 		})
 		.join('\n\n');
 }
+
+/**
+ * Smart Distribute, with one retry for any network the writer left empty. The model occasionally
+ * returns a blank draft for one network (seen live on 26-sep for LinkedIn in a 4-network batch);
+ * without the retry that network would then be refused as "no text" at publish time.
+ */
+export async function generateDrafts(
+	this: IExecuteFunctions,
+	itemIndex: number,
+	body: { prompt: string; platforms: string[]; media_url?: string; brand_voice?: string },
+): Promise<{ drafts: IDataObject; missing: string[] }> {
+	const first = await apiRequest.call(this, 'POST', '/api/generate', body as unknown as IDataObject, undefined, itemIndex);
+	const drafts = { ...((first.drafts as IDataObject) || {}) };
+	const empty = () => body.platforms.filter((p) => !String((drafts[p] as IDataObject)?.text ?? '').trim());
+	let missing = empty();
+	if (missing.length) {
+		const again = await apiRequest.call(
+			this,
+			'POST',
+			'/api/generate',
+			{ ...body, platforms: missing } as unknown as IDataObject,
+			undefined,
+			itemIndex,
+		);
+		for (const p of missing) {
+			const d = (again.drafts as IDataObject)?.[p] as IDataObject | undefined;
+			if (d && String(d.text ?? '').trim()) drafts[p] = d;
+		}
+		missing = empty();
+	}
+	return { drafts, missing };
+}

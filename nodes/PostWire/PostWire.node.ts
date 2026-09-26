@@ -28,6 +28,7 @@ import {
 	classifyMedia,
 	describeFailure,
 	draftsPreview,
+	generateDrafts,
 	hintFor,
 	maxOf,
 	mediaBlocks,
@@ -312,15 +313,15 @@ export class PostWire implements INodeType {
 
 				if (operation === 'generate') {
 					const prompt = this.getNodeParameter('prompt', i) as string;
-					const gen = await apiRequest.call(this, 'POST', '/api/generate', {
+					const { drafts, missing } = await generateDrafts.call(this, i, {
 						prompt,
 						platforms,
 						media_url: mediaUrl || undefined,
 						brand_voice: (opts.brandVoice as string) || undefined,
-					}, undefined, i);
-					const drafts = (gen.drafts as IDataObject) || {};
+					});
 					push({
-						...gen,
+						drafts,
+						...(missing.length ? { missing } : {}),
 						platforms,
 						media_url: mediaUrl || undefined,
 						preview: draftsPreview(drafts),
@@ -361,13 +362,13 @@ export class PostWire implements INodeType {
 				let perPlatform: IDataObject | undefined;
 				let text: string | undefined;
 				if (contentMode === 'smart') {
-					const gen = await apiRequest.call(this, 'POST', '/api/generate', {
+					const gen = await generateDrafts.call(this, i, {
 						prompt: this.getNodeParameter('prompt', i) as string,
 						platforms,
 						media_url: mediaUrl || undefined,
 						brand_voice: (opts.brandVoice as string) || undefined,
-					}, undefined, i);
-					perPlatform = (gen.drafts as IDataObject) || {};
+					});
+					perPlatform = gen.drafts;
 				} else if (contentMode === 'drafts') {
 					const raw = this.getNodeParameter('drafts', i);
 					let parsed: unknown = raw;
