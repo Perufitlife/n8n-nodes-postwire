@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-postwire",
-  "version": "0.2.4",
+  "version": "0.3.0",
   "description": "Publish one idea natively to TikTok, Instagram, YouTube, LinkedIn, X, Bluesky, Mastodon, Telegram, Discord and Reddit from n8n — a different post written for each network, via PostWire.",
   "keywords": [
     "n8n-community-node-package",
@@ -23,16 +23,18 @@
     "type": "git",
     "url": "git+https://github.com/Perufitlife/n8n-nodes-postwire.git"
   },
-  "main": "index.js",
   "scripts": {
-    "build": "tsc && node scripts-copy-icons.mjs",
-    "prepublishOnly": "npm run build"
+    "build": "n8n-node build",
+    "build:watch": "tsc --watch",
+    "dev": "n8n-node dev",
+    "lint": "n8n-node lint",
+    "lint:fix": "n8n-node lint --fix",
+    "test": "node --test test/",
+    "release": "n8n-node release",
+    "prepublishOnly": "n8n-node prerelease"
   },
   "files": [
-    "dist",
-    "index.js",
-    "LICENSE.md",
-    "README.md"
+    "dist"
   ],
   "n8n": {
     "n8nNodesApiVersion": 1,
@@ -41,7 +43,8 @@
     ],
     "nodes": [
       "dist/nodes/PostWire/PostWire.node.js"
-    ]
+    ],
+    "strict": true
   },
   "peerDependencies": {
     "n8n-workflow": "*"
@@ -50,8 +53,12 @@
     "node": ">=20.15"
   },
   "devDependencies": {
+    "@n8n/node-cli": "^0.49.1",
     "@types/node": "^22.10.2",
+    "eslint": "^9.39.4",
     "n8n-workflow": "*",
+    "prettier": "^3.8.3",
+    "release-it": "^20.2.0",
     "typescript": "^5.7.2"
   }
 }
