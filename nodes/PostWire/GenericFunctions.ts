@@ -414,7 +414,7 @@ export function draftsPreview(drafts: IDataObject): string {
 }
 
 /**
- * Smart Distribute, with one retry for any network the writer left empty. The model occasionally
+ * Smart Distribute, with up to two retries for any network the writer left empty. The model occasionally
  * returns a blank draft for one network (seen live on 26-sep for LinkedIn in a 4-network batch);
  * without the retry that network would then be refused as "no text" at publish time.
  */
@@ -427,7 +427,9 @@ export async function generateDrafts(
 	const drafts = { ...((first.drafts as IDataObject) || {}) };
 	const empty = () => body.platforms.filter((p) => !String((drafts[p] as IDataObject)?.text ?? '').trim());
 	let missing = empty();
-	if (missing.length) {
+	// Two more tries at most, each only for the networks still empty: measured on 26-sep, a lone
+	// LinkedIn request came back empty in 2 of 4 attempts, so one retry still left ~25 % empty.
+	for (let attempt = 0; attempt < 2 && missing.length; attempt++) {
 		const again = await apiRequest.call(
 			this,
 			'POST',
