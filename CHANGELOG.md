@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.1
+
+### Fixed
+- Codex file (`PostWire.node.json`): `nodeVersion` is the codex schema version `"1.0"` (not the node's runtime version), and the category is `Marketing & Content`, as requested in n8n's verification review.
+
 ## 0.3.0 — unreleased
 
 Node version 2. Workflows built with version 1 keep working unchanged.
