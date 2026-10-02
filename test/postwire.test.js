@@ -210,6 +210,51 @@ test('plan week sends the workflow time zone offset and refuses video networks',
 	await assert.rejects(run(v), /TikTok cannot be in a week plan/);
 });
 
+test('plan week reads Days and Hour from Options, and still honours the old top-level values', async () => {
+	const c = ctx({
+		params: { resource: 'post', operation: 'planWeek', platforms: ['linkedin'], topic: 'pricing', options: { days: 2, hour: 18 } },
+		answer: () => ok({ ok: true, queued: [] }),
+	});
+	await run(c);
+	assert.equal(c.calls[0].body.days, 2);
+	assert.equal(c.calls[0].body.start_hour, 18);
+
+	const d = ctx({ params: { resource: 'post', operation: 'planWeek', platforms: ['linkedin'], topic: 'p', options: {} }, answer: () => ok({}) });
+	await run(d);
+	assert.equal(d.calls[0].body.days, 5);
+	assert.equal(d.calls[0].body.start_hour, 10);
+
+	// A workflow saved with 0.3.1 carries days/hour at the top level (the earlier test covers hour: 9).
+	const legacy = ctx({ params: { resource: 'post', operation: 'planWeek', platforms: ['linkedin'], topic: 'p', days: 3, options: {} }, answer: () => ok({}) });
+	await run(legacy);
+	assert.equal(legacy.calls[0].body.days, 3);
+});
+
+test('connect link reads Network from Options, the old top-level value, or none', async () => {
+	const base = { resource: 'connection', operation: 'createConnectLink' };
+	const a = ctx({ params: { ...base, options: { platform: 'linkedin' } }, answer: () => ok({ url: 'u' }) });
+	await run(a);
+	assert.deepEqual(a.calls[0].body, { platform: 'linkedin' });
+
+	const b = ctx({ params: { ...base, options: {} }, answer: () => ok({ url: 'u' }) });
+	await run(b);
+	assert.deepEqual(b.calls[0].body, {});
+
+	const legacy = ctx({ params: { ...base, platform: 'bluesky' }, answer: () => ok({ url: 'u' }) });
+	await run(legacy);
+	assert.deepEqual(legacy.calls[0].body, { platform: 'bluesky' });
+});
+
+test('version 2 keeps optional fields in collections and offers only networks PostWire publishes to', () => {
+	const props = new PostWire().description.properties.filter((p) => (p.displayOptions?.show?.['@version'] || []).includes(2));
+	for (const name of ['days', 'hour']) assert.equal(props.find((p) => p.name === name), undefined, `${name} is top level`);
+	const link = props.filter((p) => p.displayOptions?.show?.operation?.includes('createConnectLink'));
+	assert.deepEqual(link.map((p) => p.name), ['options']);
+	const offered = props.filter((p) => p.type === 'options' || p.type === 'multiOptions').flatMap((p) => p.options.map((o) => o.value));
+	const nested = props.filter((p) => p.type === 'collection').flatMap((p) => p.options).filter((o) => o.options).flatMap((o) => o.options.map((x) => x.value));
+	for (const v of [...offered, ...nested]) assert.ok(!['x', 'reddit'].includes(v), `v2 offers ${v}`);
+});
+
 test('time zone offsets follow the getTimezoneOffset convention', () => {
 	assert.equal(G.tzOffsetMinutes('UTC'), 0);
 	assert.equal(G.tzOffsetMinutes('Asia/Hong_Kong'), -480);

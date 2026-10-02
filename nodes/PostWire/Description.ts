@@ -3,8 +3,11 @@ import { PLATFORMS } from './GenericFunctions';
 
 const v2 = { '@version': [2] };
 
-const networkOptions = PLATFORMS.map((p) => ({ name: p.name, value: p.value }));
-const textNetworkOptions = PLATFORMS.filter((p) => !p.mediaNeed).map((p) => ({
+// X and Reddit stay in PLATFORMS only for version 1 of the node (LegacyDescription.ts is frozen):
+// PostWire does not publish to them, so version 2 does not offer them.
+const OFFERED = PLATFORMS.filter((p) => !['x', 'reddit'].includes(p.value));
+const networkOptions = OFFERED.map((p) => ({ name: p.name, value: p.value }));
+const textNetworkOptions = OFFERED.filter((p) => !p.mediaNeed).map((p) => ({
 	name: p.name,
 	value: p.value,
 }));
@@ -322,24 +325,6 @@ export const postProperties: INodeProperties[] = [
 		displayOptions: { show: { ...postOps, operation: ['planWeek'] } },
 	},
 	{
-		displayName: 'Days',
-		name: 'days',
-		type: 'number',
-		typeOptions: { minValue: 1, maxValue: 5 },
-		default: 5,
-		description: 'How many days to fill, starting tomorrow (up to 5)',
-		displayOptions: { show: { ...postOps, operation: ['planWeek'] } },
-	},
-	{
-		displayName: 'Hour',
-		name: 'hour',
-		type: 'number',
-		typeOptions: { minValue: 0, maxValue: 23 },
-		default: 10,
-		description: "Hour of the day each post goes out, in the workflow's time zone (Settings → Timezone)",
-		displayOptions: { show: { ...postOps, operation: ['planWeek'] } },
-	},
-	{
 		displayName: 'Media',
 		name: 'mediaSource',
 		type: 'options',
@@ -351,7 +336,7 @@ export const postProperties: INodeProperties[] = [
 				description:
 					'A file from a previous node (Google Drive, HTTP Request, Read File…). PostWire hosts it for you.',
 			},
-			{ name: 'None', value: 'none', description: 'Text only — fine for X, LinkedIn, Bluesky, Threads-style networks' },
+			{ name: 'None', value: 'none', description: 'Text only — fine for LinkedIn, Facebook, Bluesky, Mastodon, Telegram and Discord' },
 			{ name: 'URL', value: 'url', description: 'A public https link straight to the .mp4 or image file' },
 		],
 		default: 'none',
@@ -435,6 +420,15 @@ export const postProperties: INodeProperties[] = [
 				description: 'How you want to sound; applied to every draft PostWire writes',
 			},
 			{
+				displayName: 'Days',
+				name: 'days',
+				type: 'number',
+				typeOptions: { minValue: 1, maxValue: 5 },
+				default: 5,
+				description: 'How many days to fill, starting tomorrow (up to 5)',
+				displayOptions: { show: { '/operation': ['planWeek'] } },
+			},
+			{
 				displayName: 'Dry Run',
 				name: 'dryRun',
 				type: 'boolean',
@@ -442,6 +436,15 @@ export const postProperties: INodeProperties[] = [
 				description:
 					'Whether to check connections, media and length and return exactly what would be published — without publishing anything',
 				displayOptions: { show: { '/operation': ['publish'] } },
+			},
+			{
+				displayName: 'Hour',
+				name: 'hour',
+				type: 'number',
+				typeOptions: { minValue: 0, maxValue: 23 },
+				default: 10,
+				description: "Hour of the day each post goes out (0-23), in the workflow's time zone or the one set in 'Timezone'",
+				displayOptions: { show: { '/operation': ['planWeek'] } },
 			},
 			{
 				displayName: 'Idempotency Key',
@@ -481,14 +484,6 @@ export const postProperties: INodeProperties[] = [
 				default: false,
 				description:
 					'Whether to skip checking that the media URL is public, is a file and not a page, and is under 1 GB before sending it',
-			},
-			{
-				displayName: 'Subreddit',
-				name: 'subreddit',
-				type: 'string',
-				default: '',
-				placeholder: 'e.g. SideProject',
-				description: 'Reddit only: the community to post in, without r/',
 			},
 			{
 				displayName: 'Timezone',
@@ -645,13 +640,22 @@ export const connectionProperties: INodeProperties[] = [
 		displayOptions: { show: { ...connOps, operation: ['checkHealth'] } },
 	},
 	{
-		displayName: 'Network',
-		name: 'platform',
-		type: 'options',
-		options: [{ name: 'Any Network', value: '' }, ...networkOptions],
-		default: '',
-		description: 'Lock the link to one network, or let the client choose',
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add option',
+		default: {},
 		displayOptions: { show: { ...connOps, operation: ['createConnectLink'] } },
+		options: [
+			{
+				displayName: 'Network',
+				name: 'platform',
+				type: 'options',
+				options: networkOptions,
+				default: 'tiktok',
+				description: 'Lock the link to one network. Leave this option out to let the client choose.',
+			},
+		],
 	},
 	{
 		displayName: 'Return All',

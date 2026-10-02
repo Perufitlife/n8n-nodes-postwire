@@ -4,7 +4,7 @@ Publish one idea to every social network from n8n — with **a different post wr
 
 This is the official n8n node for [PostWire](https://postwire.io), maintained by the PostWire team. PostWire already holds the platform approvals TikTok, Instagram (Meta) and YouTube require for publishing apps, so connecting an account is one OAuth click — there is no developer app or App Review on your side.
 
-Networks: TikTok · Instagram · YouTube · LinkedIn · X · Facebook · Reddit · Bluesky · Mastodon · Telegram · Discord.
+Networks: TikTok · Instagram · YouTube · LinkedIn · Facebook · Bluesky · Mastodon · Telegram · Discord.
 
 ## Install
 
@@ -31,11 +31,11 @@ Free plan: one brand with every network it connects, 30 posts a month, no card.
 | **Post** | **Publish** | Publishes now to one or more networks. *Content* can be **Smart Distribute** (one idea in, a native post per network), **Same Text on Every Network**, or **Drafts From a Previous Step** (for approval flows). |
 | | **Write Drafts** | Preview only: writes a native draft per network — right length, hook, hashtags, YouTube title and tags — and publishes nothing. Also returns a readable `preview` for Slack/Telegram/email approval. |
 | | **Schedule** | Queues a post for later. Connections and media are checked **now**, so a missing video shows up while you watch, not at 7am tomorrow. |
-| | **Plan Week** | One topic in, up to five days of different posts out (a lesson, a mistake, a number, a question, behind the scenes), already scheduled one per day at the hour you choose, in the workflow's time zone. Text networks only. |
+| | **Plan Week** | One topic in, up to five days of different posts out (a lesson, a mistake, a number, a question, behind the scenes), already scheduled one per day, in the workflow's time zone. Text networks only. *Options* → **Days** (1–5, default 5), **Hour** (0–23, default 10) and **Timezone**. |
 | | **Get Status** | Whether a TikTok or YouTube upload has finished processing. |
 | **Scheduled Post** | Get Many · Update · Cancel | Read the queue, move a post to another time, or cancel it. |
 | **Brand** | Get Many · Create · Rename · Delete | A brand is one business with all its networks — what PostWire plans count. |
-| **Connection** | Get Many · Check Health · Create Connect Link | See connected accounts, ask a network whether a connection can still publish, or create a one-hour link a client can use to connect *their* account to your PostWire (agencies). |
+| **Connection** | Get Many · Check Health · Create Connect Link | See connected accounts, ask a network whether a connection can still publish, or create a one-hour link a client can use to connect *their* account to your PostWire (agencies); *Options* → **Network** locks the link to one network. |
 | **Account** | Get | Plan, posts used this month, connected networks. |
 | **Media** | Upload | Hosts a binary from a previous node and returns a public URL the networks can download. |
 
@@ -51,7 +51,7 @@ TikTok and YouTube only publish video; Instagram needs a photo or a video. The n
 ## Nothing half-publishes, nothing double-posts
 
 - PostWire refuses the whole call if any selected network is not connected, instead of publishing to half of them.
-- Shared text over a network's limit is shortened for that network (X 280, Bluesky 300, Mastodon 500…) instead of failing.
+- Shared text over a network's limit is shortened for that network (Bluesky 300, Mastodon 500, Instagram 2,200…) instead of failing.
 - **Idempotency Key** (Options): PostWire refuses a second post with the same key for 24 hours. With Smart Distribute the node sets one automatically per execution, so n8n's *Retry On Fail* can never post the same thing twice.
 - **Dry Run** (Options): checks connections, media and length and returns exactly what would go out, per network — without publishing.
 
@@ -60,7 +60,7 @@ TikTok and YouTube only publish video; Instagram needs a photo or a video. The n
 **Publish** returns one item per network, so a Filter or IF node can act on failures alone:
 
 ```json
-{ "ok": true,  "platform": "x", "id": "1934…", "url": "https://x.com/…" }
+{ "ok": true,  "platform": "bluesky", "id": "at://…", "url": "https://bsky.app/profile/…/post/…" }
 { "ok": false, "platform": "youtube", "error": "…", "hint": "YouTube could not download the media. It must be a public https link…" }
 ```
 
@@ -97,7 +97,7 @@ Every refusal from the API carries a code, and the node turns it into a message 
 
 **RSS → a native post per network**
 
-`RSS Feed Trigger` → `PostWire: Post → Publish` (Content: Smart Distribute, Idea: `{{ $json.title }} — {{ $json.contentSnippet }} {{ $json.link }}`, Networks: LinkedIn, X, Bluesky, Options → Idempotency Key: `{{ $json.guid }}`).
+`RSS Feed Trigger` → `PostWire: Post → Publish` (Content: Smart Distribute, Idea: `{{ $json.title }} — {{ $json.contentSnippet }} {{ $json.link }}`, Networks: LinkedIn, Bluesky, Mastodon, Options → Idempotency Key: `{{ $json.guid }}`).
 
 **Google Drive video → TikTok, Reels and Shorts**
 

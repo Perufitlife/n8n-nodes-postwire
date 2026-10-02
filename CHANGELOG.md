@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.2
+
+### Changed
+- Optional fields now sit in collections, as requested in n8n's verification review: **Days** and **Hour** (Post → Plan Week) moved into *Options*, and **Network** (Connection → Create Connect Link) into a new *Options* collection. Workflows saved with 0.3.1 keep their values: the node still reads the old top-level parameters when the new options are not set.
+- Version 2 of the node no longer offers X or Reddit, and the Reddit-only *Subreddit* option is gone: PostWire does not publish to either. README and package description updated to match. Version 1 (`LegacyDescription.ts`) is unchanged.
+
 ## 0.3.1
 
 ### Fixed

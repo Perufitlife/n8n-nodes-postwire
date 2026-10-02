@@ -5,6 +5,7 @@ import {
 	type IDataObject,
 	type IExecuteFunctions,
 	type ILoadOptionsFunctions,
+	type INode,
 	type INodeExecutionData,
 	type INodeListSearchResult,
 	type INodeType,
@@ -49,6 +50,12 @@ const LEGACY: Record<string, { resource: string; operation: string; contentMode?
 	schedule: { resource: 'post', operation: 'schedule', contentMode: 'text' },
 };
 
+/** A parameter a workflow saved by an older version of the node still carries, but the node no longer defines. */
+function legacyParam(node: INode, name: string): unknown {
+	const v = (node.parameters as IDataObject)?.[name];
+	return v === undefined || v === null || v === '' ? undefined : v;
+}
+
 function locatorValue(v: unknown): string {
 	if (v && typeof v === 'object') return String((v as IDataObject).value ?? '').trim();
 	return String(v ?? '').trim();
@@ -64,7 +71,7 @@ export class PostWire implements INodeType {
 		defaultVersion: 2,
 		subtitle: '={{$parameter["operation"] + ($parameter["resource"] ? ": " + $parameter["resource"] : "")}}',
 		description:
-			'Publish one idea natively to TikTok, Instagram, YouTube, LinkedIn, X, Bluesky and more — a different post written for each network',
+			'Publish one idea natively to TikTok, Instagram, YouTube, LinkedIn, Bluesky and more — a different post written for each network',
 		usableAsTool: true,
 		defaults: { name: 'PostWire' },
 		inputs: [NodeConnectionTypes.Main],
@@ -206,7 +213,9 @@ export class PostWire implements INodeType {
 						continue;
 					}
 					if (operation === 'createConnectLink') {
-						const platform = this.getNodeParameter('platform', i, '') as string;
+						const linkOpts = this.getNodeParameter('options', i, {}) as IDataObject;
+						// Up to 0.3.1 'Network' was a top-level parameter; a workflow saved then still carries it.
+						const platform = ((linkOpts.platform ?? legacyParam(this.getNode(), 'platform')) as string) || '';
 						push(await apiRequest.call(this, 'POST', '/api/connect-link', platform ? { platform } : {}, undefined, i));
 						continue;
 					}
@@ -286,8 +295,9 @@ export class PostWire implements INodeType {
 					const res = await apiRequest.call(this, 'POST', '/api/week', {
 						topic: this.getNodeParameter('topic', i) as string,
 						platforms,
-						days: this.getNodeParameter('days', i, 5) as number,
-						start_hour: this.getNodeParameter('hour', i, 10) as number,
+						// Up to 0.3.1 'Days' and 'Hour' were top-level parameters; a workflow saved then still carries them.
+						days: Number(opts.days ?? legacyParam(this.getNode(), 'days') ?? 5),
+						start_hour: Number(opts.hour ?? legacyParam(this.getNode(), 'hour') ?? 10),
 						tz_offset_minutes: offset,
 						brand_voice: (opts.brandVoice as string) || undefined,
 					}, undefined, i);
@@ -378,7 +388,7 @@ export class PostWire implements INodeType {
 						} catch {
 							throw new NodeOperationError(this.getNode(), "'Drafts' is not valid JSON", {
 								itemIndex: i,
-								description: 'Map the output of Write Drafts with {{ $json.drafts }}, or write an object like { "x": { "text": "…" } }.',
+								description: 'Map the output of Write Drafts with {{ $json.drafts }}, or write an object like { "linkedin": { "text": "…" } }.',
 							});
 						}
 					}
@@ -403,7 +413,6 @@ export class PostWire implements INodeType {
 					video_url: mediaUrl && treatAsVideo ? mediaUrl : undefined,
 					title: (opts.title as string) || undefined,
 					privacy: (opts.privacy as string) || undefined,
-					subreddit: (opts.subreddit as string) || undefined,
 					brand_id: brandId || undefined,
 				};
 
