@@ -71,11 +71,15 @@ jobs:
         run: |
           NAME=$(node -p "require('./package.json').name")
           VER=$(node -p "require('./package.json').version")
-          sleep 20
-          if npm view "$NAME@$VER" --json | grep -qi '"attestations"'; then
-            echo "provenance attached to $NAME@$VER"
-          else
-            echo "PUBLISHED WITHOUT PROVENANCE — n8n verification will reject $NAME@$VER."
-            echo "Check the trusted publisher settings on npmjs.com for this package."
-            exit 1
-          fi
+          # The registry takes a minute or two to serve a new version (0.3.1 and 0.3.2 both "failed" here after 20 s
+          # with provenance attached): ask for up to 5 minutes before calling it missing.
+          for i in $(seq 1 20); do
+            if npm view "$NAME@$VER" --json 2>/dev/null | grep -qi '"attestations"'; then
+              echo "provenance attached to $NAME@$VER"
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "PUBLISHED WITHOUT PROVENANCE (or npm still not serving it after 5 min) — n8n verification will reject $NAME@$VER."
+          echo "Check: npm view $NAME@$VER dist.attestations, and the trusted publisher settings on npmjs.com."
+          exit 1

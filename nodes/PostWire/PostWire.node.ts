@@ -15,6 +15,7 @@ import {
 
 import {
 	accountProperties,
+	approvalProperties,
 	brandProperties,
 	connectionProperties,
 	mediaProperties,
@@ -37,6 +38,7 @@ import {
 	needOf,
 	tzOffsetMinutes,
 	uploadBinary,
+	xLength,
 } from './GenericFunctions';
 import { legacyProperties } from './LegacyDescription';
 
@@ -85,6 +87,7 @@ export class PostWire implements INodeType {
 			...scheduledPostProperties,
 			...brandProperties,
 			...connectionProperties,
+			...approvalProperties,
 			...accountProperties,
 			...mediaProperties,
 		],
@@ -140,7 +143,18 @@ export class PostWire implements INodeType {
 					}
 					const usage = (me.usage as IDataObject) || {};
 					const brands = (me.brands as IDataObject) || {};
+					// Teams: which workspace the key acts in and with which role (a key never switches workspace).
+					const workspace = me.workspace as IDataObject | undefined;
+					const member = me.member as IDataObject | undefined;
 					push({
+						...(workspace
+							? {
+									workspace_id: workspace.id,
+									workspace_name: workspace.name ?? null,
+									role: member?.effective_role ?? member?.role ?? null,
+									brand_ids: member?.brand_ids ?? null,
+								}
+							: {}),
 						email: me.email,
 						plan: me.plan,
 						posts_used: usage.posts,
@@ -160,6 +174,35 @@ export class PostWire implements INodeType {
 					continue;
 				}
 
+				if (resource === 'approval') {
+					if (operation === 'get') {
+						const id = String(this.getNodeParameter('approvalId', i) ?? '').trim();
+						const res = await apiRequest.call(this, 'GET', `/api/approvals/${encodeURIComponent(id)}`, undefined, undefined, i);
+						push((res.approval as IDataObject) || res);
+						continue;
+					}
+					if (operation === 'getAll') {
+						const filters = this.getNodeParameter('filters', i, {}) as IDataObject;
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const max = returnAll ? Infinity : (this.getNodeParameter('limit', i) as number);
+						const qs: IDataObject = { limit: Math.min(200, Number.isFinite(max) ? max : 200) };
+						if (filters.status) qs.status = filters.status;
+						const brandFilter = locatorValue(filters.brand);
+						if (brandFilter) qs.brand_id = brandFilter;
+						const all: IDataObject[] = [];
+						// Newest first; `before` pages back through older ones.
+						for (let page = 0; page < 50 && all.length < max; page++) {
+							const res = await apiRequest.call(this, 'GET', '/api/approvals', undefined, { ...qs }, i);
+							const list = (res.approvals as IDataObject[]) || [];
+							all.push(...list);
+							if (list.length < (qs.limit as number) || !list[list.length - 1]?.created_at) break;
+							qs.before = list[list.length - 1].created_at;
+						}
+						for (const a of all.slice(0, Number.isFinite(max) ? max : undefined)) push(a);
+						continue;
+					}
+				}
+
 				if (resource === 'brand') {
 					if (operation === 'getAll') {
 						const res = await apiRequest.call(this, 'GET', '/api/brands', undefined, undefined, i);
@@ -177,6 +220,11 @@ export class PostWire implements INodeType {
 						continue;
 					}
 					const id = locatorValue(this.getNodeParameter('brand', i));
+					if (operation === 'get') {
+						const res = await apiRequest.call(this, 'GET', `/api/brands/${encodeURIComponent(id)}`, undefined, undefined, i);
+						push((res.brand as IDataObject) || res);
+						continue;
+					}
 					if (operation === 'update') {
 						const res = await apiRequest.call(this, 'PATCH', `/api/brands/${encodeURIComponent(id)}`, {
 							name: this.getNodeParameter('name', i) as string,
@@ -235,7 +283,12 @@ export class PostWire implements INodeType {
 						for (const r of list) push(r);
 						continue;
 					}
-					const id = encodeURIComponent(this.getNodeParameter('scheduledPostId', i) as string);
+					const id = encodeURIComponent(String(this.getNodeParameter('scheduledPostId', i) ?? '').trim());
+					if (operation === 'get') {
+						const res = await apiRequest.call(this, 'GET', `/api/schedule/${id}`, undefined, undefined, i);
+						push((res.scheduled as IDataObject) || res);
+						continue;
+					}
 					if (operation === 'delete') {
 						await apiRequest.call(this, 'DELETE', `/api/schedule/${id}`, undefined, undefined, i);
 						push({ deleted: true, id: decodeURIComponent(id) });
@@ -263,7 +316,9 @@ export class PostWire implements INodeType {
 				if (operation === 'getStatus') {
 					const platform = this.getNodeParameter('statusPlatform', i) as string;
 					const id = String(this.getNodeParameter('postId', i) ?? '').trim();
-					push(await apiRequest.call(this, 'GET', '/api/post/status', undefined, { platform, id }, i));
+					// PostWire's own id (a scheduled post, or one waiting for approval) needs no network.
+					const qs: IDataObject = platform === 'postwire' ? { id } : { platform, id };
+					push(await apiRequest.call(this, 'GET', '/api/post/status', undefined, qs, i));
 					continue;
 				}
 
@@ -298,8 +353,11 @@ export class PostWire implements INodeType {
 						// Up to 0.3.1 'Days' and 'Hour' were top-level parameters; a workflow saved then still carries them.
 						days: Number(opts.days ?? legacyParam(this.getNode(), 'days') ?? 5),
 						start_hour: Number(opts.hour ?? legacyParam(this.getNode(), 'hour') ?? 10),
+						// The zone itself (each day's own offset, across a DST change), and the offset for an older server.
+						timezone: tz,
 						tz_offset_minutes: offset,
 						brand_voice: (opts.brandVoice as string) || undefined,
+						brand_id: locatorValue(opts.brand) || undefined,
 					}, undefined, i);
 					push({ ...res, timezone: tz });
 					continue;
@@ -404,31 +462,83 @@ export class PostWire implements INodeType {
 					text = this.getNodeParameter('text', i, '') as string;
 				}
 
+				// X thread and reply (Oct 2026). Checked here as X counts characters, so a 281-character post is named
+				// before anything is sent — the API would refuse the whole post (bad_x_thread) to every network.
+				const xThread = ((opts.xThread as string[] | string | undefined) ?? []);
+				const threadPosts = (Array.isArray(xThread) ? xThread : [xThread]).map((t) => String(t ?? '').trim()).filter(Boolean);
+				const xReply = String(opts.xReply ?? '').trim();
+				if (platforms.includes('x') && (threadPosts.length || xReply)) {
+					if (threadPosts.length > 25)
+						throw new NodeOperationError(this.getNode(), `'X Thread' has ${threadPosts.length} posts; X threads take at most 25 after the first`, {
+							itemIndex: i,
+							description: 'Remove posts from Options → X Thread, or split the thread in two.',
+						});
+					const long = [...threadPosts, ...(xReply ? [xReply] : [])].findIndex((t) => xLength(t) > 280);
+					if (long >= 0)
+						throw new NodeOperationError(
+							this.getNode(),
+							long < threadPosts.length
+								? `Post ${long + 2} of the X thread is ${xLength(threadPosts[long])} characters as X counts them, over 280`
+								: `'X Reply' is ${xLength(xReply)} characters as X counts them, over 280`,
+							{ itemIndex: i, description: 'X counts every link as 23 characters and an emoji as 2. Shorten it; nothing was published.' },
+						);
+					if (threadPosts.length) {
+						const pp: IDataObject = { ...(perPlatform || {}) };
+						const xd: IDataObject = { ...((pp.x as IDataObject) || {}) };
+						if (!xd.text && text) xd.text = text;
+						xd.thread = threadPosts;
+						pp.x = xd;
+						perPlatform = pp;
+					}
+				}
+
 				const brandId = locatorValue(opts.brand ?? opts.brandId);
 				const body: IDataObject = {
 					platforms,
 					per_platform: perPlatform,
-					text: perPlatform ? undefined : text,
+					// With 'Same Text' the text stays for every network; per_platform then only carries the X thread.
+					text,
 					photo_url: mediaUrl && !treatAsVideo ? mediaUrl : undefined,
 					video_url: mediaUrl && treatAsVideo ? mediaUrl : undefined,
 					title: (opts.title as string) || undefined,
 					privacy: (opts.privacy as string) || undefined,
 					brand_id: brandId || undefined,
+					options: platforms.includes('x') && xReply ? { x: { reply: xReply } } : undefined,
 				};
 
 				if (operation === 'schedule') {
-					const runAt = this.getNodeParameter('runAt', i) as string;
-					if (!runAt)
-						throw new NodeOperationError(this.getNode(), "'Publish At' is empty", {
-							itemIndex: i,
-							description: 'Pick a date and time, or map one with an expression such as {{ $json.publish_at }}.',
-						});
+					const when = this.getNodeParameter('when', i, 'time') as string;
+					let runAt = '';
+					if (when === 'nextSlot') runAt = 'next_slot';
+					else {
+						const at = this.getNodeParameter('runAt', i, '') as string;
+						if (!at)
+							throw new NodeOperationError(this.getNode(), "'Publish At' is empty", {
+								itemIndex: i,
+								description: 'Pick a date and time, map one with an expression such as {{ $json.publish_at }}, or set \'When\' to "In the Next Free Queue Slot".',
+							});
+						runAt = new Date(at).toISOString();
+					}
 					const scheduled = await apiRequest.call(this, 'POST', '/api/schedule', {
 						...body,
-						run_at: new Date(runAt).toISOString(),
+						run_at: runAt,
+						timezone: when === 'nextSlot' ? ((opts.timezone as string) || this.getTimezone() || undefined) : undefined,
 						label: (opts.label as string) || undefined,
 					}, undefined, i);
-					push({ ...((scheduled.scheduled as IDataObject) || scheduled), drafts: perPlatform });
+					const row = scheduled.scheduled as IDataObject | undefined;
+					if (scheduled.status === 'pending_approval' || !row) {
+						// Held for a person (202): nothing is queued until someone approves it.
+						push({ ...scheduled, drafts: perPlatform });
+						continue;
+					}
+					push({
+						...row,
+						...(scheduled.slot ? { slot: scheduled.slot } : {}),
+						...(scheduled.held ? { held: true, code: scheduled.code, message: scheduled.message, upgrade_url: scheduled.upgrade_url } : {}),
+						...(scheduled.held_networks ? { held_networks: scheduled.held_networks, held_message: scheduled.held_message } : {}),
+						...(scheduled.x_credits ? { x_credits: scheduled.x_credits } : {}),
+						drafts: perPlatform,
+					});
 					continue;
 				}
 
@@ -444,12 +554,19 @@ export class PostWire implements INodeType {
 						if (!conns.some((c) => c.platform === p))
 							issues.push(`${nameOf(p)} is not connected${brandId ? ' to this brand' : ''}`);
 						const max = maxOf(p);
-						if (max && t.length > max)
+						// X counts a link as 23 and an emoji as 2. The first post is shortened like any shared text; the posts
+						// of a thread are not (X refuses them), so each is checked on its own.
+						const len = p === 'x' ? xLength(t) : t.length;
+						if (max && len > max)
 							issues.push(
 								perPlatform
-									? `${t.length} characters, over the ${max} limit`
-									: `${t.length} characters; PostWire will shorten it to ${max}`,
+									? `${len} characters, over the ${max} limit`
+									: `${len} characters; PostWire will shorten it to ${max}`,
 							);
+						const thread = p === 'x' && Array.isArray(draft.thread) ? (draft.thread as string[]) : [];
+						thread.forEach((tp, n) => {
+							if (xLength(String(tp)) > 280) issues.push(`thread post ${n + 2}: ${xLength(String(tp))} characters, over 280`);
+						});
 						if (!t.trim() && !mediaUrl) issues.push('no text');
 						push({
 							dryRun: true,
@@ -458,6 +575,8 @@ export class PostWire implements INodeType {
 							text: t,
 							title: draft.title ?? body.title,
 							tags: draft.tags,
+							...(thread.length ? { thread } : {}),
+							...(p === 'x' && xReply ? { reply: xReply } : {}),
 							media_url: mediaUrl || undefined,
 							issues,
 						});
@@ -478,6 +597,25 @@ export class PostWire implements INodeType {
 				const response = await apiRequest.call(this, 'POST', '/api/post', body, undefined, i);
 				// One item per network, so a Filter or IF node can act on the failures alone.
 				const results = ((response.results as IDataObject[]) || [response]).filter(Boolean);
+
+				// Held for approval (202): nothing was published and nothing failed. The brand's approval rules, a limit on
+				// this API key or a Contributor's role made it wait for a person; it goes out when they approve it. Each
+				// network says so, with the ids a PostWire Trigger (approval.decided) or Post → Get Status can follow.
+				if (response.status === 'pending_approval') {
+					const approval = (response.approval as IDataObject) || {};
+					for (const res of results)
+						push({
+							...res,
+							status: 'pending_approval',
+							id: response.id,
+							schedule_id: response.schedule_id ?? response.id,
+							approval_id: response.approval_id,
+							review_url: approval.review_url,
+							reasons: approval.reasons,
+							message: response.message_for_user ?? response.message,
+						});
+					continue;
+				}
 				for (const res of results) {
 					const extra: IDataObject = {};
 					if (res.ok === false) {

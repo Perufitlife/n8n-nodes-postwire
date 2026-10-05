@@ -1,0 +1,15 @@
+{
+	"node": "n8n-nodes-postwire.postWireTrigger",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Marketing & Content", "Communication"],
+	"resources": {
+		"credentialDocumentation": [
+			{ "url": "https://postwire.io/n8n-social-media-automation/" }
+		],
+		"primaryDocumentation": [
+			{ "url": "https://postwire.io/docs/webhooks/" },
+			{ "url": "https://github.com/Perufitlife/n8n-nodes-postwire#postwire-trigger" }
+		]
+	}
+}

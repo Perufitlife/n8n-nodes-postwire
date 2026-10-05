@@ -3,9 +3,9 @@ import { PLATFORMS } from './GenericFunctions';
 
 const v2 = { '@version': [2] };
 
-// X and Reddit stay in PLATFORMS only for version 1 of the node (LegacyDescription.ts is frozen):
-// PostWire does not publish to them, so version 2 does not offer them.
-const OFFERED = PLATFORMS.filter((p) => !['x', 'reddit'].includes(p.value));
+// Reddit stays in PLATFORMS only for version 1 of the node (LegacyDescription.ts is frozen): PostWire does not publish
+// to it. X came back in 0.4.0: PostWire publishes to X as a pay-per-use add-on of the paid plans (X credits).
+const OFFERED = PLATFORMS.filter((p) => p.value !== 'reddit');
 const networkOptions = OFFERED.map((p) => ({ name: p.name, value: p.value }));
 const textNetworkOptions = OFFERED.filter((p) => !p.mediaNeed).map((p) => ({
 	name: p.name,
@@ -42,6 +42,7 @@ export const resourceProperty: INodeProperties = {
 	displayOptions: { show: { ...v2 } },
 	options: [
 		{ name: 'Account', value: 'account' },
+		{ name: 'Approval', value: 'approval' },
 		{ name: 'Brand', value: 'brand' },
 		{ name: 'Connection', value: 'connection' },
 		{ name: 'Media', value: 'media' },
@@ -108,6 +109,12 @@ export const operationProperties: INodeProperties[] = [
 				action: 'Cancel scheduled post',
 			},
 			{
+				name: 'Get',
+				value: 'get',
+				description: "Retrieve one queued, held or published post with each network's result",
+				action: 'Get scheduled post',
+			},
+			{
 				name: 'Get Many',
 				value: 'getAll',
 				description: 'Retrieve the posts in your queue, with their status',
@@ -135,6 +142,12 @@ export const operationProperties: INodeProperties[] = [
 				value: 'delete',
 				description: 'Delete a brand and disconnect its accounts',
 				action: 'Delete brand',
+			},
+			{
+				name: 'Get',
+				value: 'get',
+				description: 'Retrieve one brand and the accounts connected to it',
+				action: 'Get brand',
 			},
 			{
 				name: 'Get Many',
@@ -171,6 +184,29 @@ export const operationProperties: INodeProperties[] = [
 				value: 'getAll',
 				description: 'Retrieve a list of connected social accounts',
 				action: 'Get many connections',
+			},
+		],
+		default: 'getAll',
+	},
+	{
+		displayName: 'Operation',
+		name: 'operation',
+		type: 'options',
+		noDataExpression: true,
+		displayOptions: { show: { ...v2, resource: ['approval'] } },
+		options: [
+			{
+				name: 'Get',
+				value: 'get',
+				description: 'Retrieve one approval with its preview, the decision and the post it holds',
+				action: 'Get approval',
+			},
+			{
+				name: 'Get Many',
+				value: 'getAll',
+				description:
+					'Retrieve posts waiting for a person, and the ones decided. Only a person decides: from the emailed link or the dashboard, never an API key.',
+				action: 'Get many approvals',
 			},
 		],
 		default: 'getAll',
@@ -220,7 +256,7 @@ export const postProperties: INodeProperties[] = [
 		default: [],
 		required: true,
 		description:
-			'Where to post. Connect them in the PostWire dashboard first — TikTok, Instagram and YouTube are one OAuth click, because PostWire already holds the platform approvals. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+			'Where to post. Connect them in the PostWire dashboard first — TikTok, Instagram and YouTube are one OAuth click, because PostWire already holds the platform approvals. X is a paid-plan add-on that uses X credits. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		displayOptions: { show: { ...postOps, operation: ['publish', 'schedule', 'generate'] } },
 	},
 	{
@@ -369,24 +405,47 @@ export const postProperties: INodeProperties[] = [
 		},
 	},
 	{
+		displayName: 'When',
+		name: 'when',
+		type: 'options',
+		noDataExpression: true,
+		options: [
+			{ name: 'At a Specific Time', value: 'time', description: "The time set in 'Publish At'" },
+			{
+				name: 'In the Next Free Queue Slot',
+				value: 'nextSlot',
+				description:
+					"The brand's next free queue slot for these networks (weekly times set per brand in PostWire), up to 28 days ahead",
+			},
+		],
+		default: 'time',
+		displayOptions: { show: { ...postOps, operation: ['schedule'] } },
+	},
+	{
 		displayName: 'Publish At',
 		name: 'runAt',
 		type: 'dateTime',
 		default: '',
 		required: true,
 		description: 'When to publish (up to 365 days ahead). Connections and media are checked now.',
-		displayOptions: { show: { ...postOps, operation: ['schedule'] } },
+		displayOptions: { show: { ...postOps, operation: ['schedule'], when: ['time'] } },
 	},
 	{
 		displayName: 'Network',
 		name: 'statusPlatform',
 		type: 'options',
 		options: [
+			{
+				name: 'PostWire ID (Scheduled or Waiting for Approval)',
+				value: 'postwire',
+				description: 'The ID PostWire returned for a scheduled post or one waiting for approval',
+			},
 			{ name: 'TikTok', value: 'tiktok' },
 			{ name: 'YouTube', value: 'youtube' },
 		],
 		default: 'tiktok',
-		description: 'Networks that process video after upload and report when it is live',
+		description:
+			'A network that processes video after upload and reports when it is live, or PostWire itself for a scheduled post or one waiting for approval',
 		displayOptions: { show: { ...postOps, operation: ['getStatus'] } },
 	},
 	{
@@ -395,7 +454,7 @@ export const postProperties: INodeProperties[] = [
 		type: 'string',
 		default: '={{ $json.id }}',
 		required: true,
-		description: "The 'ID' a Publish step returned for that network",
+		description: "The 'ID' a Publish or Schedule step returned",
 		displayOptions: { show: { ...postOps, operation: ['getStatus'] } },
 	},
 	{
@@ -408,7 +467,7 @@ export const postProperties: INodeProperties[] = [
 		options: [
 			{
 				...brandLocator('brand', 'Brand', 'Publish as this brand. Leave empty to use your first brand.'),
-				displayOptions: { show: { '/operation': ['publish', 'schedule'] } },
+				displayOptions: { show: { '/operation': ['publish', 'schedule', 'planWeek'] } },
 			},
 			{
 				displayName: 'Brand Voice',
@@ -423,9 +482,9 @@ export const postProperties: INodeProperties[] = [
 				displayName: 'Days',
 				name: 'days',
 				type: 'number',
-				typeOptions: { minValue: 1, maxValue: 5 },
+				typeOptions: { minValue: 1, maxValue: 7 },
 				default: 5,
-				description: 'How many days to fill, starting tomorrow (up to 5)',
+				description: 'How many days to fill, starting tomorrow (up to 7)',
 				displayOptions: { show: { '/operation': ['planWeek'] } },
 			},
 			{
@@ -491,8 +550,9 @@ export const postProperties: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				placeholder: 'e.g. America/Lima',
-				description: "IANA time zone for 'Hour'. Leave empty to use the workflow's time zone.",
-				displayOptions: { show: { '/operation': ['planWeek'] } },
+				description:
+					"IANA time zone for 'Hour' (Plan Week) or for reading the queue slots of a brand that has none saved (Schedule in the next free slot). Leave empty to use the workflow's time zone.",
+				displayOptions: { show: { '/operation': ['planWeek', 'schedule'] } },
 			},
 			{
 				displayName: 'Title (YouTube)',
@@ -513,6 +573,27 @@ export const postProperties: INodeProperties[] = [
 				default: 'public',
 				description: 'Used by TikTok and YouTube. Unlisted is YouTube only.',
 			},
+			{
+				displayName: 'X Reply',
+				name: 'xReply',
+				type: 'string',
+				typeOptions: { rows: 2 },
+				default: '',
+				placeholder: 'e.g. Full write-up: https://example.com/post',
+				description:
+					'One more X post published as a reply under the last post (the usual place for a link). At most 280 characters as X counts them; it uses X credits like any X post.',
+				displayOptions: { show: { '/operation': ['publish', 'schedule'] } },
+			},
+			{
+				displayName: 'X Thread',
+				name: 'xThread',
+				type: 'string',
+				typeOptions: { multipleValues: true, multipleValueButtonText: 'Add Post' },
+				default: [],
+				description:
+					"Posts 2 to 26 of an X thread, in order, each a reply to the one before; the post itself is the first. Each at most 280 characters as X counts them (a link counts 23). With Smart Distribute, ask for a thread in 'Idea' instead (\"write a thread about…\").",
+				displayOptions: { show: { '/operation': ['publish', 'schedule'] } },
+			},
 		],
 	},
 ];
@@ -527,7 +608,7 @@ export const scheduledPostProperties: INodeProperties[] = [
 		default: '',
 		required: true,
 		description: "The 'ID' returned by Schedule or Get Many",
-		displayOptions: { show: { ...schedOps, operation: ['update', 'delete'] } },
+		displayOptions: { show: { ...schedOps, operation: ['get', 'update', 'delete'] } },
 	},
 	{
 		displayName: 'Update Fields',
@@ -609,6 +690,11 @@ export const brandProperties: INodeProperties[] = [
 		displayOptions: { show: { ...brandOps, operation: ['update', 'delete'] } },
 	},
 	{
+		...brandLocator('brand', 'Brand', 'The brand to retrieve'),
+		required: true,
+		displayOptions: { show: { ...brandOps, operation: ['get'] } },
+	},
+	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
@@ -673,6 +759,60 @@ export const connectionProperties: INodeProperties[] = [
 		default: 50,
 		description: 'Max number of results to return',
 		displayOptions: { show: { ...connOps, operation: ['getAll'], returnAll: [false] } },
+	},
+];
+
+const approvalOps = { ...v2, resource: ['approval'] };
+
+export const approvalProperties: INodeProperties[] = [
+	{
+		displayName: 'Approval ID',
+		name: 'approvalId',
+		type: 'string',
+		default: '={{ $json.approval_id }}',
+		required: true,
+		description: "The 'Approval ID' a Publish or Schedule step returned when the post was held, or one from Get Many",
+		displayOptions: { show: { ...approvalOps, operation: ['get'] } },
+	},
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		default: false,
+		description: 'Whether to return all results or only up to a given limit',
+		displayOptions: { show: { ...approvalOps, operation: ['getAll'] } },
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		typeOptions: { minValue: 1, maxValue: 200 },
+		default: 50,
+		description: 'Max number of results to return',
+		displayOptions: { show: { ...approvalOps, operation: ['getAll'], returnAll: [false] } },
+	},
+	{
+		displayName: 'Filters',
+		name: 'filters',
+		type: 'collection',
+		placeholder: 'Add filter',
+		default: {},
+		displayOptions: { show: { ...approvalOps, operation: ['getAll'] } },
+		options: [
+			brandLocator('brand', 'Brand', 'Only approvals for this brand'),
+			{
+				displayName: 'Status',
+				name: 'status',
+				type: 'options',
+				options: [
+					{ name: 'Approved', value: 'approved' },
+					{ name: 'Canceled', value: 'canceled' },
+					{ name: 'Pending', value: 'pending' },
+					{ name: 'Rejected', value: 'rejected' },
+				],
+				default: 'pending',
+			},
+		],
 	},
 ];
 

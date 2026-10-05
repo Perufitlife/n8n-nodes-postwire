@@ -188,13 +188,41 @@ test('binary media is uploaded to PostWire first and published as a URL', async 
 	assert.equal(c.calls[3].body.video_url, 'https://store.example/signed.mp4');
 });
 
-test('an oversized binary is refused with the URL alternative', async () => {
+test('a binary over 1 GB is refused before any request', async () => {
+	// Not a real 1 GB buffer: only its length is read before the refusal.
+	const huge = { length: 1100 * 1024 * 1024, subarray: () => Buffer.alloc(0) };
 	const c = ctx({
 		params: { resource: 'media', operation: 'upload', binaryPropertyName: 'data' },
-		binary: { meta: { mimeType: 'video/mp4' }, buffer: Buffer.alloc(51 * 1024 * 1024) },
+		binary: { meta: { mimeType: 'video/mp4' }, buffer: huge },
 		answer: () => ok({}),
 	});
-	await assert.rejects(run(c), (e) => /50 MB/.test(e.message) && /public https link/.test(e.description));
+	await assert.rejects(run(c), (e) => /1024 MB/.test(e.message) && /H\.264/.test(e.description));
+	assert.equal(c.calls.length, 0);
+});
+
+test('a binary over 50 MB is uploaded in parts and finalized as one file (0.4.0)', async () => {
+	const size = 51 * 1024 * 1024;
+	const c = ctx({
+		params: { resource: 'media', operation: 'upload', binaryPropertyName: 'data' },
+		binary: { meta: { mimeType: 'video/mp4' }, buffer: Buffer.alloc(size, 7) },
+		answer: (o) => {
+			if (o.url.endsWith('/api/media/upload-url'))
+				return ok({ path: 'acct/big.mp4', multipart: true, parts: [
+					{ part: 1, upload_url: 'https://store.example/p1', start: 0, end: 50 * 1024 * 1024 },
+					{ part: 2, upload_url: 'https://store.example/p2', start: 50 * 1024 * 1024, end: size },
+				] });
+			if (o.method === 'PUT') return { statusCode: 200 };
+			return ok({ ok: true, media_url: 'https://postwire.io/api/media/joined/x.mp4' });
+		},
+	});
+	const [out] = await run(c);
+	assert.equal(c.calls[0].body.multipart, true);
+	assert.equal(c.calls[0].body.size_bytes, size);
+	const puts = c.calls.filter((k) => k.method === 'PUT');
+	assert.deepEqual(puts.map((p) => [p.url, p.body.length]), [['https://store.example/p1', 50 * 1024 * 1024], ['https://store.example/p2', 1024 * 1024]]);
+	assert.match(c.calls.at(-1).url, /\/api\/media\/finalize$/);
+	assert.equal(c.calls.at(-1).qs.path, 'acct/big.mp4');
+	assert.equal(out[0].json.media_url, 'https://postwire.io/api/media/joined/x.mp4');
 });
 
 test('plan week sends the workflow time zone offset and refuses video networks', async () => {
@@ -245,14 +273,15 @@ test('connect link reads Network from Options, the old top-level value, or none'
 	assert.deepEqual(legacy.calls[0].body, { platform: 'bluesky' });
 });
 
-test('version 2 keeps optional fields in collections and offers only networks PostWire publishes to', () => {
+test('version 2 keeps optional fields in collections and offers only networks PostWire publishes to (X again since 0.4.0, never Reddit)', () => {
 	const props = new PostWire().description.properties.filter((p) => (p.displayOptions?.show?.['@version'] || []).includes(2));
 	for (const name of ['days', 'hour']) assert.equal(props.find((p) => p.name === name), undefined, `${name} is top level`);
 	const link = props.filter((p) => p.displayOptions?.show?.operation?.includes('createConnectLink'));
 	assert.deepEqual(link.map((p) => p.name), ['options']);
 	const offered = props.filter((p) => p.type === 'options' || p.type === 'multiOptions').flatMap((p) => p.options.map((o) => o.value));
 	const nested = props.filter((p) => p.type === 'collection').flatMap((p) => p.options).filter((o) => o.options).flatMap((o) => o.options.map((x) => x.value));
-	for (const v of [...offered, ...nested]) assert.ok(!['x', 'reddit'].includes(v), `v2 offers ${v}`);
+	for (const v of [...offered, ...nested]) assert.ok(v !== 'reddit', `v2 offers ${v}`);
+	assert.ok(offered.includes('x'), 'v2 offers X');
 });
 
 test('time zone offsets follow the getTimezoneOffset convention', () => {

@@ -3,6 +3,7 @@ import {
 	NodeOperationError,
 	type IDataObject,
 	type IExecuteFunctions,
+	type IHookFunctions,
 	type IHttpRequestMethods,
 	type IHttpRequestOptions,
 	type ILoadOptionsFunctions,
@@ -29,6 +30,18 @@ export const PLATFORMS: Array<{ name: string; value: string; mediaNeed: MediaNee
 	{ name: 'X (Twitter)', value: 'x', mediaNeed: null, max: 280 },
 	{ name: 'YouTube', value: 'youtube', mediaNeed: 'video', max: 5000 },
 ];
+
+/**
+ * Length as X counts it: every link is 23 characters whatever its length, and an emoji (any character outside the
+ * Basic Multilingual Plane) is 2. The same rule the PostWire API applies before it spends X credits.
+ */
+export function xLength(text: string): number {
+	const withoutLinks = String(text ?? '').replace(/https?:\/\/\S+/gi, '');
+	const links = (String(text ?? '').match(/https?:\/\/\S+/gi) || []).length;
+	let n = 0;
+	for (const ch of withoutLinks) n += (ch.codePointAt(0) ?? 0) > 0xffff ? 2 : 1;
+	return n + links * 23;
+}
 
 export const needOf = (value: string): MediaNeed =>
 	PLATFORMS.find((p) => p.value === value)?.mediaNeed ?? null;
@@ -242,6 +255,101 @@ export function describeFailure(
 				message: serverMsg,
 				description: 'Update the n8n-nodes-postwire package to the latest version (Settings → Community nodes).',
 			};
+		// X (Twitter) is a pay-per-use add-on of the paid plans (Oct 2026).
+		case 'bad_x_thread':
+			return {
+				message: serverMsg || 'The X thread or reply cannot be published',
+				description: `Nothing was published to any network. Each X post must be text, at most 280 characters as X counts them (a link counts 23, an emoji 2), and a thread has at most 25 posts after the first. Fix 'X Thread' / 'X Reply' in Options, or the drafts.`,
+			};
+		case 'x_credits_required':
+			return {
+				message: serverMsg || 'Not enough X credits',
+				description: `Each X post uses X credits (1, or 10 with a link; every post of a thread counts). Nothing was published. Top up in ${DASHBOARD}#x, or remove X from 'Networks'.`,
+			};
+		case 'x_paid_plan_required':
+			return {
+				message: serverMsg || 'X needs a paid plan',
+				description: `Posting to X is part of the paid plans (not Free or the trial). Upgrade at ${upgrade}, or remove X from 'Networks'.`,
+			};
+		case 'x_daily_limit':
+			return {
+				message: serverMsg || "This account reached today's X limit",
+				description: 'Nothing was sent and no X credits were used. The limit resets at 00:00 UTC; schedule the post for later with Post → Schedule.',
+			};
+		case 'x_unavailable':
+		case 'x_reconnect':
+			return {
+				message: serverMsg || 'X is not available for this post',
+				description: `Reconnect X in ${DASHBOARD} → Accounts and run the step again.`,
+			};
+		// Approvals and limits per API key (Oct 2026).
+		case 'key_network_not_allowed':
+		case 'key_brand_not_allowed':
+		case 'key_monthly_cap_reached':
+			return {
+				message: serverMsg || 'This API key is not allowed to make this post',
+				description: `The account owner set limits on this API key (networks, brands or a monthly cap). Nothing was published. They can be changed in ${DASHBOARD} → API & MCP → Limits.`,
+			};
+		case 'governance_unavailable':
+			return {
+				message: serverMsg || 'PostWire could not check the approval rules',
+				description: 'Nothing was published. Run the step again in a minute (enable "Retry On Fail" in the node settings).',
+			};
+		// Teams (Oct 2026): an API key acts with the role of the member who created it.
+		case 'role_forbidden':
+		case 'seat_read_only':
+			return {
+				message: serverMsg || 'Your role in this PostWire workspace cannot do this',
+				description: `The key in this credential belongs to a team member whose role does not allow it. Ask an admin of the workspace to change the role (${DASHBOARD} → Settings → Team), or use a key created by a member who can.`,
+			};
+		case 'brand_restricted':
+			return {
+				message: serverMsg || 'This key can only work with some brands',
+				description: `Pick one of the brands this team member was given in 'Brand', or ask an admin to add the brand to the member (${DASHBOARD} → Settings → Team).`,
+			};
+		case 'workspace_forbidden':
+			return {
+				message: serverMsg || 'This key cannot act in that workspace',
+				description: 'An API key belongs to the workspace it was created in. Create a key inside the workspace you want to post for, and put it in the credential.',
+			};
+		// Scheduling
+		case 'no_free_slot':
+			return {
+				message: serverMsg || 'No free queue slot',
+				description: `Every queue slot of these networks is taken for the next 28 days. Add queue slots to the brand in the PostWire dashboard, or set 'When' to "At a Specific Time".`,
+			};
+		case 'bad_timezone':
+			return {
+				message: serverMsg || 'Unknown time zone',
+				description: "Use an IANA name such as America/New_York or Europe/Madrid in Options → Timezone.",
+			};
+		case 'ambiguous_brand':
+			return {
+				message: serverMsg || 'That network is connected in more than one brand',
+				description: "Pick the brand in Options → Brand, so PostWire knows which account to post from.",
+			};
+		// Webhooks (PostWire Trigger)
+		case 'bad_url':
+			return {
+				message: serverMsg || 'PostWire cannot call this n8n webhook URL',
+				description:
+					"PostWire only calls public https addresses. Set n8n's WEBHOOK_URL to the public https address of this instance (or use a tunnel such as n8n's --tunnel or Cloudflare Tunnel), then activate the workflow again.",
+			};
+		case 'too_many':
+			return {
+				message: serverMsg || 'This PostWire account already has 5 webhook endpoints',
+				description: `Delete an endpoint you no longer use (${DASHBOARD} → API & MCP → Webhooks), or deactivate another workflow with a PostWire Trigger, then activate this one again.`,
+			};
+		case 'webhooks_unavailable':
+			return {
+				message: serverMsg || 'Webhooks are not available right now',
+				description: 'Try activating the workflow again in a few minutes.',
+			};
+		case 'too_large':
+			return {
+				message: serverMsg || 'The file is too large',
+				description: 'PostWire takes files up to 1 GB. Export a shorter or more compressed version (H.264 MP4, 1080p).',
+			};
 	}
 	if (status === 401)
 		return {
@@ -298,7 +406,7 @@ export function hintFor(platform: string, error: string, code?: string): string 
  * "400 Bad Request".
  */
 export async function apiRequest(
-	this: IExecuteFunctions | ILoadOptionsFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
 	method: IHttpRequestMethods,
 	path: string,
 	body?: IDataObject,
@@ -355,29 +463,40 @@ export async function uploadBinary(
 			itemIndex,
 			description: `PostWire hosts ${supported.join(', ')}. Convert the file first, or check 'Input Binary Field' points at the media and not at another attachment.`,
 		});
-	if (buffer.length > UPLOAD_MAX_BYTES)
-		throw new NodeOperationError(this.getNode(), `The file is ${MB(buffer.length)}; uploads through n8n are limited to ${MB(UPLOAD_MAX_BYTES)}`, {
+	if (buffer.length > REMOTE_MEDIA_MAX_BYTES)
+		throw new NodeOperationError(this.getNode(), `The file is ${MB(buffer.length)}; PostWire takes files up to ${MB(REMOTE_MEDIA_MAX_BYTES)}`, {
 			itemIndex,
-			description: `For a larger video, set 'Media' to "URL" with a public https link to the file (up to ${MB(REMOTE_MEDIA_MAX_BYTES)}), or export a smaller H.264 MP4.`,
+			description: 'Export a shorter or more compressed version (H.264 MP4, 1080p is plenty).',
 		});
 
+	// Over one storage object's ceiling (50 MB) the API hands out one signed URL per part and serves the parts back as
+	// one file (multipart, Oct 2026). Up to 0.3.2 the node refused anything over 50 MB.
+	const multipart = buffer.length > UPLOAD_MAX_BYTES;
 	const slot = await apiRequest.call(this, 'POST', '/api/media/upload-url', {
 		content_type: contentType,
 		size_bytes: buffer.length,
+		...(multipart ? { multipart: true } : {}),
 	}, undefined, itemIndex);
-	const put = (await this.helpers.httpRequest({
-		method: 'PUT',
-		url: slot.upload_url as string,
-		body: buffer,
-		headers: { 'content-type': contentType },
-		returnFullResponse: true,
-		ignoreHttpStatusErrors: true,
-	})) as { statusCode: number };
-	if (put.statusCode >= 400)
-		throw new NodeOperationError(this.getNode(), `The upload to PostWire storage answered ${put.statusCode}`, {
-			itemIndex,
-			description: 'Run the step again; an upload slot is valid for a short time only.',
-		});
+	const parts: Array<{ url: string; start: number; end: number }> =
+		multipart && Array.isArray(slot.parts)
+			? (slot.parts as IDataObject[]).map((p) => ({ url: p.upload_url as string, start: Number(p.start), end: Number(p.end) }))
+			: [{ url: slot.upload_url as string, start: 0, end: buffer.length }];
+	for (const [n, part] of parts.entries()) {
+		const put = (await this.helpers.httpRequest({
+			method: 'PUT',
+			url: part.url,
+			body: buffer.subarray(part.start, part.end),
+			headers: { 'content-type': contentType },
+			returnFullResponse: true,
+			ignoreHttpStatusErrors: true,
+		})) as { statusCode: number };
+		if (put.statusCode >= 400)
+			throw new NodeOperationError(
+				this.getNode(),
+				`The upload to PostWire storage answered ${put.statusCode}${parts.length > 1 ? ` (part ${n + 1} of ${parts.length})` : ''}`,
+				{ itemIndex, description: 'Run the step again; an upload slot is valid for a short time only.' },
+			);
+	}
 	return await apiRequest.call(this, 'GET', '/api/media/finalize', undefined, { path: slot.path }, itemIndex);
 }
 
