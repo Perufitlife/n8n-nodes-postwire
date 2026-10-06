@@ -11,7 +11,8 @@ import {
 } from 'n8n-workflow';
 
 export const BASE = 'https://postwire.io';
-export const DASHBOARD = `${BASE}/dashboard.html`;
+// Tagged so an account opened from n8n is attributed to the node (PostWire's signup reads the first-touch utm).
+export const DASHBOARD = `${BASE}/dashboard.html?utm_source=n8n&utm_medium=node`;
 
 export type MediaNeed = 'video' | 'any' | null;
 

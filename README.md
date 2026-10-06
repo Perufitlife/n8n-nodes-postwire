@@ -23,11 +23,11 @@ cd ~/.n8n/nodes && npm install n8n-nodes-postwire
 
 ## Credentials
 
-1. Create a free account at [postwire.io/dashboard.html](https://postwire.io/dashboard.html) and connect the networks you want to post to (Accounts).
+1. Create a free account at [postwire.io/dashboard.html](https://postwire.io/dashboard.html?utm_source=n8n&utm_medium=readme) and connect the networks you want to post to (Accounts).
 2. Copy your API key from **API & MCP**.
 3. In n8n, create a **PostWire API** credential, paste the key and press **Test** — it calls `GET /api/me`, so a wrong key fails now rather than at publish time.
 
-Free plan: one brand with every network it connects, 20 posts a month, no card.
+Free plan: one brand, 20 posts a month, 2 networks per post, no card. Paid plans send each post to every network you connect.
 
 ## Resources and operations
 
