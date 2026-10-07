@@ -3,9 +3,24 @@
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
 	"categories": ["Marketing & Content", "Communication"],
+	"alias": [
+		"TikTok",
+		"Instagram",
+		"YouTube",
+		"LinkedIn",
+		"Facebook",
+		"social",
+		"social media",
+		"post published",
+		"post failed",
+		"publish failed",
+		"approval",
+		"content approval",
+		"webhook"
+	],
 	"resources": {
 		"credentialDocumentation": [
-			{ "url": "https://postwire.io/n8n-social-media-automation/" }
+			{ "url": "https://postwire.io/n8n-social-media-automation/?utm_source=n8n&utm_medium=codex" }
 		],
 		"primaryDocumentation": [
 			{ "url": "https://postwire.io/docs/webhooks/" },

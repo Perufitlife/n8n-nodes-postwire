@@ -78,19 +78,19 @@ export const operationProperties: INodeProperties[] = [
 				value: 'publish',
 				description:
 					'Publish a post now to one or more networks — with Smart Distribute, each network gets its own native version',
-				action: 'Publish post',
+				action: 'Publish a post to social media',
 			},
 			{
 				name: 'Schedule',
 				value: 'schedule',
 				description: 'Queue a post for later; it is checked now, so a missing video shows up while you watch',
-				action: 'Schedule post',
+				action: 'Schedule a social media post',
 			},
 			{
 				name: 'Write Drafts',
 				value: 'generate',
 				description: 'Preview: write a native post draft for each network without publishing anything',
-				action: 'Write post drafts',
+				action: 'Write social media post drafts',
 			},
 		],
 		default: 'publish',

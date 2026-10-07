@@ -3,9 +3,43 @@
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
 	"categories": ["Marketing & Content", "Communication"],
+	"alias": [
+		"TikTok",
+		"TikTok upload",
+		"Instagram",
+		"Instagram Reels",
+		"Reels",
+		"YouTube",
+		"YouTube Shorts",
+		"YouTube upload",
+		"Shorts",
+		"LinkedIn",
+		"Facebook",
+		"Facebook Page",
+		"Twitter",
+		"X post",
+		"Bluesky",
+		"Mastodon",
+		"Telegram channel",
+		"Discord",
+		"social",
+		"social media",
+		"social media post",
+		"post",
+		"publish",
+		"auto post",
+		"cross-post",
+		"multi-platform",
+		"schedule post",
+		"social media scheduler",
+		"content calendar",
+		"upload video",
+		"short-form video",
+		"repurpose content"
+	],
 	"resources": {
 		"credentialDocumentation": [
-			{ "url": "https://postwire.io/n8n-social-media-automation/" }
+			{ "url": "https://postwire.io/n8n-social-media-automation/?utm_source=n8n&utm_medium=codex" }
 		],
 		"primaryDocumentation": [
 			{ "url": "https://github.com/Perufitlife/n8n-nodes-postwire#readme" }

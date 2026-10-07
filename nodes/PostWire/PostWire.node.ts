@@ -73,7 +73,7 @@ export class PostWire implements INodeType {
 		defaultVersion: 2,
 		subtitle: '={{$parameter["operation"] + ($parameter["resource"] ? ": " + $parameter["resource"] : "")}}',
 		description:
-			'Publish one idea natively to TikTok, Instagram, YouTube, LinkedIn, Bluesky and more — a different post written for each network',
+			'Publish or schedule posts and videos on TikTok, Instagram Reels, YouTube Shorts, LinkedIn, Facebook, X, Bluesky and more — one idea, a native post written for each network',
 		usableAsTool: true,
 		defaults: { name: 'PostWire' },
 		inputs: [NodeConnectionTypes.Main],

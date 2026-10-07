@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased (0.4.2 candidate)
+
+### Changed
+- **Found by what people type in n8n's nodes panel.** Both codex files now carry `alias` (a search key of the nodes panel and of n8n's AI workflow builder, next to the display name): TikTok, Instagram Reels, YouTube Shorts, LinkedIn, Facebook, X, Bluesky, Mastodon, Telegram, Discord, "social media", "post", "publish", "auto post", "schedule post", "upload video" and similar. Only networks PostWire publishes to are listed (no Threads, Pinterest or Reddit).
+- Node description names the formats people search for (Reels, Shorts) and says "publish or schedule".
+- Clearer action labels: *Publish a post to social media*, *Schedule a social media post*, *Write social media post drafts*.
+- Codex credential documentation link tagged `utm_medium=codex`.
+- New test `test/codex.test.js` checks codex fields, categories against n8n's list and the aliases.
+
 ## 0.4.0
 
 ### Added
