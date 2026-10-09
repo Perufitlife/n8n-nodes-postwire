@@ -1,6 +1,22 @@
 # Changelog
 
-## Unreleased (0.4.2 candidate)
+## 0.4.3
+
+### Fixed
+- **The aliases finally reach n8n's nodes panel.** The codex (categories, aliases, links) is now written **inline** in both nodes' descriptions, not only in the `.node.json` files. n8n's catalog of verified community nodes (`api.n8n.io/api/community-nodes`, what n8n Cloud's panel searches) is built from the description and never read the `.node.json`: on 9-oct-2026 it listed 0.4.2 with `codex: {}`, so searching *TikTok*, *Instagram*, *Reels* or *Shorts* never showed PostWire. Nodes whose aliases do show (`n8n-nodes-guni@2.2.0`, `n8n-nodes-htmlcsstopdf@3.2.9`) carry the codex inline in `dist/…/X.node.js`. The `.node.json` files stay (self-hosted n8n loads them) and `test/codex.test.js` fails if the two differ.
+- **One error item when a publish reaches no network.** With *On Error: Continue*, a post that failed on all 3 of its networks came out as 3 per-network items **plus** 1 error item, so an error branch that sends an email sent 4. It is now a single item: `error`, `description`, `ok: false`, `posted: 0` and `results` (each network's result with its hint). Partial failures are unchanged (one item per network). Without *Continue*, the step fails as before.
+
+### Added
+- **New destinations** in version 2: **WordPress**, **Dev.to** and **Hashnode** (an article: *Title (YouTube and Blogs)* sets its title; Smart Distribute writes title, summary and tags), **Slack** and **Nostr**. Also in *Plan Week*, *Check Health*, *Create Connect Link* and the Trigger's network filter. Version 1 of the node keeps its frozen list.
+- *Options* → **Thread**: the posts after the main one on X, Bluesky and Mastodon (`per_platform.<network>.thread`); *X Thread*, when set, still wins for X. **Split Long Text Into a Thread** sends `thread: true` so PostWire splits at each network's limit. A Bluesky or Mastodon thread over 10 posts, or an X one over 26, is refused before anything is sent.
+- *Options* → **First Comment**: posted by the author under the post on LinkedIn, X, Bluesky and Mastodon (`options.<network>.first_comment`); on X it is the reply under the chain (*X Reply* wins when both are set) and is checked at 280 characters as X counts them. Dry Run shows each network's thread and first comment.
+- Error with the fix for the API's `bad_thread` (a Bluesky/Mastodon thread or first comment the API refused before publishing anything).
+
+### Changed
+- Codex: `subcategories: { "Marketing & Content": ["Social Media"] }`; aliases for the new destinations (WordPress, Dev.to, Hashnode, Nostr, Slack channel, blog post, publish article) plus *X thread* and *first comment* — 41 in all, only networks PostWire publishes to.
+- Node and package descriptions name the new destinations.
+
+## 0.4.2
 
 ### Changed
 - **Found by what people type in n8n's nodes panel.** Both codex files now carry `alias` (a search key of the nodes panel and of n8n's AI workflow builder, next to the display name): TikTok, Instagram Reels, YouTube Shorts, LinkedIn, Facebook, X, Bluesky, Mastodon, Telegram, Discord, "social media", "post", "publish", "auto post", "schedule post", "upload video" and similar. Only networks PostWire publishes to are listed (no Threads, Pinterest or Reddit).

@@ -1,7 +1,7 @@
 {
   "name": "n8n-nodes-postwire",
-  "version": "0.4.2",
-  "description": "Publish one idea natively to TikTok, Instagram, YouTube, LinkedIn, Facebook, X, Bluesky, Mastodon, Telegram and Discord from n8n (a different post written for each network), and trigger workflows on signed PostWire webhooks: post published or failed, connection expired, approval requested or decided.",
+  "version": "0.4.3",
+  "description": "Publish one idea natively to TikTok, Instagram, YouTube, LinkedIn, Facebook, X, Bluesky, Mastodon, Telegram, Discord, Slack and Nostr, and as an article to WordPress, Dev.to and Hashnode, from n8n (a different post written for each network, threads and a first comment included), and trigger workflows on signed PostWire webhooks: post published or failed, connection expired, approval requested or decided.",
   "keywords": [
     "n8n-community-node-package",
     "postwire",
@@ -16,7 +16,17 @@
     "scheduling",
     "approval",
     "webhook",
-    "trigger"
+    "trigger",
+    "reels",
+    "youtube shorts",
+    "bluesky",
+    "mastodon",
+    "wordpress",
+    "devto",
+    "hashnode",
+    "slack",
+    "nostr",
+    "thread"
   ],
   "license": "MIT",
   "homepage": "https://postwire.io/n8n-social-media-automation/#official-n8n-node",

@@ -20,17 +20,32 @@ export type MediaNeed = 'video' | 'any' | null;
 // explain the fix before a request is spent. `max` is the character ceiling the server enforces.
 export const PLATFORMS: Array<{ name: string; value: string; mediaNeed: MediaNeed; max: number }> = [
 	{ name: 'Bluesky', value: 'bluesky', mediaNeed: null, max: 300 },
+	{ name: 'Dev.to', value: 'devto', mediaNeed: null, max: 50000 },
 	{ name: 'Discord', value: 'discord', mediaNeed: null, max: 2000 },
 	{ name: 'Facebook', value: 'facebook', mediaNeed: null, max: 2000 },
+	{ name: 'Hashnode', value: 'hashnode', mediaNeed: null, max: 50000 },
 	{ name: 'Instagram', value: 'instagram', mediaNeed: 'any', max: 2200 },
 	{ name: 'LinkedIn', value: 'linkedin', mediaNeed: null, max: 3000 },
 	{ name: 'Mastodon', value: 'mastodon', mediaNeed: null, max: 500 },
+	{ name: 'Nostr', value: 'nostr', mediaNeed: null, max: 30000 },
 	{ name: 'Reddit', value: 'reddit', mediaNeed: null, max: 10000 },
+	{ name: 'Slack', value: 'slack', mediaNeed: null, max: 4000 },
 	{ name: 'Telegram', value: 'telegram', mediaNeed: null, max: 4000 },
 	{ name: 'TikTok', value: 'tiktok', mediaNeed: 'video', max: 2200 },
+	{ name: 'WordPress', value: 'wordpress', mediaNeed: null, max: 50000 },
 	{ name: 'X (Twitter)', value: 'x', mediaNeed: null, max: 280 },
 	{ name: 'YouTube', value: 'youtube', mediaNeed: 'video', max: 5000 },
 ];
+
+// The networks version 1 of the node offered. LegacyDescription.ts is frozen: destinations added later
+// (WordPress, Dev.to, Hashnode, Slack, Nostr in 0.4.3) appear in version 2 only.
+export const LEGACY_PLATFORMS = ['bluesky', 'discord', 'facebook', 'instagram', 'linkedin', 'mastodon', 'reddit', 'telegram', 'tiktok', 'x', 'youtube'];
+
+// Threads and a first comment (PostWire API, Oct 2026). A thread is the posts after the main one, each a reply to
+// the one before; `after` is how many the network takes after the main post. A first comment is posted by the author
+// right under the post (under the last post of a thread): the place for a link. On X it is the reply under the chain.
+export const THREAD_NETWORKS: Record<string, { after: number }> = { x: { after: 25 }, bluesky: { after: 9 }, mastodon: { after: 9 } };
+export const FIRST_COMMENT_NETWORKS = ['linkedin', 'x', 'bluesky', 'mastodon'];
 
 /**
  * Length as X counts it: every link is 23 characters whatever its length, and an emoji (any character outside the
@@ -260,7 +275,12 @@ export function describeFailure(
 		case 'bad_x_thread':
 			return {
 				message: serverMsg || 'The X thread or reply cannot be published',
-				description: `Nothing was published to any network. Each X post must be text, at most 280 characters as X counts them (a link counts 23, an emoji 2), and a thread has at most 25 posts after the first. Fix 'X Thread' / 'X Reply' in Options, or the drafts.`,
+				description: `Nothing was published to any network. Each X post must be text, at most 280 characters as X counts them (a link counts 23, an emoji 2), and a thread has at most 25 posts after the first. Fix 'Thread', 'X Thread', 'X Reply' or 'First Comment' in Options, or the drafts.`,
+			};
+		case 'bad_thread':
+			return {
+				message: serverMsg || 'The Bluesky or Mastodon thread cannot be published',
+				description: `Nothing was published to any network. A Bluesky or Mastodon thread has at most 10 posts in all, each one text and within the network's limit (Bluesky 300 characters, Mastodon 500 or the server's own), and so does a first comment. Shorten or remove posts in Options → 'Thread' or 'First Comment', or turn on 'Split Long Text Into a Thread'.`,
 			};
 		case 'x_credits_required':
 			return {

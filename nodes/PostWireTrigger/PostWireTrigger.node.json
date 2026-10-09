@@ -2,7 +2,15 @@
 	"node": "n8n-nodes-postwire.postWireTrigger",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": ["Marketing & Content", "Communication"],
+	"categories": [
+		"Marketing & Content",
+		"Communication"
+	],
+	"subcategories": {
+		"Marketing & Content": [
+			"Social Media"
+		]
+	},
 	"alias": [
 		"TikTok",
 		"Instagram",
@@ -20,11 +28,17 @@
 	],
 	"resources": {
 		"credentialDocumentation": [
-			{ "url": "https://postwire.io/n8n-social-media-automation/?utm_source=n8n&utm_medium=codex" }
+			{
+				"url": "https://postwire.io/n8n-social-media-automation/?utm_source=n8n&utm_medium=codex"
+			}
 		],
 		"primaryDocumentation": [
-			{ "url": "https://postwire.io/docs/webhooks/" },
-			{ "url": "https://github.com/Perufitlife/n8n-nodes-postwire#postwire-trigger" }
+			{
+				"url": "https://postwire.io/docs/webhooks/"
+			},
+			{
+				"url": "https://github.com/Perufitlife/n8n-nodes-postwire#postwire-trigger"
+			}
 		]
 	}
 }

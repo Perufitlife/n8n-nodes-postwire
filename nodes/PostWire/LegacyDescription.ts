@@ -1,5 +1,5 @@
 import type { INodeProperties } from 'n8n-workflow';
-import { PLATFORMS } from './GenericFunctions';
+import { LEGACY_PLATFORMS, PLATFORMS } from './GenericFunctions';
 
 // The parameters of node version 1 (package 0.1.0 – 0.2.4), unchanged, so that every workflow
 // already built with the node keeps opening and running exactly as before. New workflows get
@@ -52,7 +52,7 @@ export const legacyProperties: INodeProperties[] = [
 		displayName: 'Networks',
 		name: 'platforms',
 		type: 'multiOptions',
-		options: PLATFORMS.map((p) => ({ name: p.name, value: p.value })),
+		options: PLATFORMS.filter((p) => LEGACY_PLATFORMS.includes(p.value)).map((p) => ({ name: p.name, value: p.value })),
 		default: ['x', 'linkedin'],
 		required: true,
 		description:

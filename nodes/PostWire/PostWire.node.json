@@ -2,7 +2,15 @@
 	"node": "n8n-nodes-postwire.postWire",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": ["Marketing & Content", "Communication"],
+	"categories": [
+		"Marketing & Content",
+		"Communication"
+	],
+	"subcategories": {
+		"Marketing & Content": [
+			"Social Media"
+		]
+	},
 	"alias": [
 		"TikTok",
 		"TikTok upload",
@@ -18,10 +26,18 @@
 		"Facebook Page",
 		"Twitter",
 		"X post",
+		"X thread",
 		"Bluesky",
 		"Mastodon",
 		"Telegram channel",
 		"Discord",
+		"Slack channel",
+		"Nostr",
+		"WordPress",
+		"Dev.to",
+		"Hashnode",
+		"blog post",
+		"publish article",
 		"social",
 		"social media",
 		"social media post",
@@ -35,14 +51,19 @@
 		"content calendar",
 		"upload video",
 		"short-form video",
-		"repurpose content"
+		"repurpose content",
+		"first comment"
 	],
 	"resources": {
 		"credentialDocumentation": [
-			{ "url": "https://postwire.io/n8n-social-media-automation/?utm_source=n8n&utm_medium=codex" }
+			{
+				"url": "https://postwire.io/n8n-social-media-automation/?utm_source=n8n&utm_medium=codex"
+			}
 		],
 		"primaryDocumentation": [
-			{ "url": "https://github.com/Perufitlife/n8n-nodes-postwire#readme" }
+			{
+				"url": "https://github.com/Perufitlife/n8n-nodes-postwire#readme"
+			}
 		]
 	}
 }

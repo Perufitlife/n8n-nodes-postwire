@@ -4,7 +4,7 @@ Publish one idea to every social network from n8n — with **a different post wr
 
 This is the official n8n node for [PostWire](https://postwire.io), maintained by the PostWire team. PostWire already holds the platform approvals TikTok, Instagram (Meta) and YouTube require for publishing apps, so connecting an account is one OAuth click — there is no developer app or App Review on your side.
 
-Networks: TikTok · Instagram · YouTube · LinkedIn · Facebook · X (paid plans, X credits) · Bluesky · Mastodon · Telegram · Discord.
+Networks: TikTok · Instagram · YouTube · LinkedIn · Facebook · X (paid plans, X credits) · Bluesky · Mastodon · Telegram · Discord · Slack · Nostr — and articles on WordPress · Dev.to · Hashnode.
 
 Two nodes:
 
@@ -47,9 +47,17 @@ Free plan: one brand, 20 posts a month, 2 networks per post, no card. Paid plans
 
 The node is also available as an **AI agent tool** (`usableAsTool`): attach it to an AI Agent node and the agent can write drafts or publish.
 
-## X threads and replies
+## Threads and a first comment
 
-With **Same Text on Every Network**, *Options* → **X Thread** adds posts 2, 3… of a thread (each a reply to the one before) and **X Reply** adds one post under the last, the usual place for a link. With **Smart Distribute**, ask for a thread in the idea ("write a thread about…") and the X draft comes back with its thread. Every X post is at most 280 characters as X counts them (a link counts 23, an emoji 2): the node checks each one before anything is sent. X is part of the paid plans and each post uses X credits (1, or 10 with a link).
+*Options* → **Thread** lists the posts after the main one on **X, Bluesky and Mastodon** (each a reply to the one before; Bluesky and Mastodon take up to 9, X up to 25), or **Split Long Text Into a Thread** lets PostWire cut a long text at the network's limit. **First Comment** is posted by you right under the post on **LinkedIn, X, Bluesky and Mastodon** (under the last post of a thread): the place for a link, so the post keeps its reach. Facebook and Instagram cannot take one.
+
+### X threads and replies
+
+With **Same Text on Every Network**, *Options* → **X Thread** (overrides *Thread* for X) adds posts 2, 3… of a thread (each a reply to the one before) and **X Reply** adds one post under the last, the usual place for a link. With **Smart Distribute**, ask for a thread in the idea ("write a thread about…") and the X draft comes back with its thread. Every X post is at most 280 characters as X counts them (a link counts 23, an emoji 2): the node checks each one before anything is sent. X is part of the paid plans and each post uses X credits (1, or 10 with a link).
+
+## When every network fails
+
+A Publish that reached none of its networks fails the step. With *On Error: Continue*, it returns **one** item — `error`, `description` (the fix), `ok: false` and `results` (each network's own result and hint) — so an error branch that sends an email sends one, not one per network plus one.
 
 ## Approvals
 

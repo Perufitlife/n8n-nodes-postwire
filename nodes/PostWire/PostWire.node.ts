@@ -30,12 +30,14 @@ import {
 	classifyMedia,
 	describeFailure,
 	draftsPreview,
+	FIRST_COMMENT_NETWORKS,
 	generateDrafts,
 	hintFor,
 	maxOf,
 	mediaBlocks,
 	nameOf,
 	needOf,
+	THREAD_NETWORKS,
 	tzOffsetMinutes,
 	uploadBinary,
 	xLength,
@@ -58,6 +60,11 @@ function legacyParam(node: INode, name: string): unknown {
 	return v === undefined || v === null || v === '' ? undefined : v;
 }
 
+/** A string list option (multipleValues), trimmed, without empty entries. */
+function listOf(v: unknown): string[] {
+	return (Array.isArray(v) ? v : v === undefined || v === null ? [] : [v]).map((t) => String(t ?? '').trim()).filter(Boolean);
+}
+
 function locatorValue(v: unknown): string {
 	if (v && typeof v === 'object') return String((v as IDataObject).value ?? '').trim();
 	return String(v ?? '').trim();
@@ -73,7 +80,64 @@ export class PostWire implements INodeType {
 		defaultVersion: 2,
 		subtitle: '={{$parameter["operation"] + ($parameter["resource"] ? ": " + $parameter["resource"] : "")}}',
 		description:
-			'Publish or schedule posts and videos on TikTok, Instagram Reels, YouTube Shorts, LinkedIn, Facebook, X, Bluesky and more — one idea, a native post written for each network',
+			'Publish or schedule posts and videos on TikTok, Instagram Reels, YouTube Shorts, LinkedIn, Facebook, X, Bluesky and more, and articles on WordPress, Dev.to and Hashnode — one idea, a native post written for each network',
+		// Inline on purpose, and equal to PostWire.node.json (test/codex.test.js fails the build otherwise). n8n's catalog
+		// of verified community nodes (api.n8n.io/api/community-nodes, what n8n Cloud's nodes panel searches) is built from
+		// this description and never reads the .node.json: up to 0.4.2 it listed this node with `codex: {}`, so no alias
+		// ever reached the panel. Self-hosted n8n loads the .node.json and gets the same values.
+		codex: {
+			categories: ['Marketing & Content', 'Communication'],
+			subcategories: { 'Marketing & Content': ['Social Media'] },
+			alias: [
+				'TikTok',
+				'TikTok upload',
+				'Instagram',
+				'Instagram Reels',
+				'Reels',
+				'YouTube',
+				'YouTube Shorts',
+				'YouTube upload',
+				'Shorts',
+				'LinkedIn',
+				'Facebook',
+				'Facebook Page',
+				'Twitter',
+				'X post',
+				'X thread',
+				'Bluesky',
+				'Mastodon',
+				'Telegram channel',
+				'Discord',
+				'Slack channel',
+				'Nostr',
+				'WordPress',
+				'Dev.to',
+				'Hashnode',
+				'blog post',
+				'publish article',
+				'social',
+				'social media',
+				'social media post',
+				'post',
+				'publish',
+				'auto post',
+				'cross-post',
+				'multi-platform',
+				'schedule post',
+				'social media scheduler',
+				'content calendar',
+				'upload video',
+				'short-form video',
+				'repurpose content',
+				'first comment',
+			],
+			resources: {
+				credentialDocumentation: [
+					{ url: 'https://postwire.io/n8n-social-media-automation/?utm_source=n8n&utm_medium=codex' },
+				],
+				primaryDocumentation: [{ url: 'https://github.com/Perufitlife/n8n-nodes-postwire#readme' }],
+			},
+		},
 		usableAsTool: true,
 		defaults: { name: 'PostWire' },
 		inputs: [NodeConnectionTypes.Main],
@@ -119,6 +183,8 @@ export class PostWire implements INodeType {
 		const version = this.getNode().typeVersion;
 
 		for (let i = 0; i < items.length; i++) {
+			// Set only when a publish reached no network: the per-network results ride on the single error item.
+			let failedNetworks: IDataObject[] | undefined;
 			try {
 				let resource: string;
 				let operation: string;
@@ -462,35 +528,62 @@ export class PostWire implements INodeType {
 					text = this.getNodeParameter('text', i, '') as string;
 				}
 
-				// X thread and reply (Oct 2026). Checked here as X counts characters, so a 281-character post is named
-				// before anything is sent — the API would refuse the whole post (bad_x_thread) to every network.
-				const xThread = ((opts.xThread as string[] | string | undefined) ?? []);
-				const threadPosts = (Array.isArray(xThread) ? xThread : [xThread]).map((t) => String(t ?? '').trim()).filter(Boolean);
+				// Threads and a first comment (Oct 2026). X, Bluesky and Mastodon take a thread (per_platform.<network>.thread:
+				// the posts after the main one, or true to let PostWire split a long text); LinkedIn, X, Bluesky and Mastodon a
+				// first comment (options.<network>.first_comment). X is checked here as X counts characters, so a 281-character
+				// post is named before anything is sent — the API would refuse the whole post (bad_x_thread) to every network.
+				// Bluesky and Mastodon lengths are checked by the API, which refuses the whole post the same way (bad_thread).
+				const xThreadPosts = listOf(opts.xThread);
+				const threadPosts = listOf(opts.thread);
 				const xReply = String(opts.xReply ?? '').trim();
-				if (platforms.includes('x') && (threadPosts.length || xReply)) {
-					if (threadPosts.length > 25)
-						throw new NodeOperationError(this.getNode(), `'X Thread' has ${threadPosts.length} posts; X threads take at most 25 after the first`, {
-							itemIndex: i,
-							description: 'Remove posts from Options → X Thread, or split the thread in two.',
-						});
-					const long = [...threadPosts, ...(xReply ? [xReply] : [])].findIndex((t) => xLength(t) > 280);
-					if (long >= 0)
+				const firstComment = String(opts.firstComment ?? '').trim();
+				const chainOf = (p: string): string[] | true | undefined => {
+					if (!THREAD_NETWORKS[p]) return undefined;
+					if (p === 'x' && xThreadPosts.length) return xThreadPosts;
+					if (threadPosts.length) return threadPosts;
+					return opts.splitThread === true ? true : undefined;
+				};
+				for (const p of platforms) {
+					const chain = chainOf(p);
+					if (Array.isArray(chain) && chain.length > THREAD_NETWORKS[p].after)
 						throw new NodeOperationError(
 							this.getNode(),
-							long < threadPosts.length
-								? `Post ${long + 2} of the X thread is ${xLength(threadPosts[long])} characters as X counts them, over 280`
-								: `'X Reply' is ${xLength(xReply)} characters as X counts them, over 280`,
+							`The ${nameOf(p)} thread has ${chain.length} posts; ${nameOf(p)} takes at most ${THREAD_NETWORKS[p].after} after the first`,
+							{ itemIndex: i, description: "Remove posts from Options → 'Thread' or 'X Thread', or split the thread in two." },
+						);
+				}
+				if (platforms.includes('x')) {
+					const xChain = chainOf('x');
+					const posts = Array.isArray(xChain) ? xChain : [];
+					const long = posts.findIndex((t) => xLength(t) > 280);
+					// On X the first comment is the reply under the chain; 'X Reply' wins when both are set, as in the API.
+					const reply = xReply || firstComment;
+					if (long >= 0 || (reply && xLength(reply) > 280))
+						throw new NodeOperationError(
+							this.getNode(),
+							long >= 0
+								? `Post ${long + 2} of the X thread is ${xLength(posts[long])} characters as X counts them, over 280`
+								: `'${xReply ? 'X Reply' : 'First Comment'}' is ${xLength(reply)} characters as X counts them, over 280`,
 							{ itemIndex: i, description: 'X counts every link as 23 characters and an emoji as 2. Shorten it; nothing was published.' },
 						);
-					if (threadPosts.length) {
-						const pp: IDataObject = { ...(perPlatform || {}) };
-						const xd: IDataObject = { ...((pp.x as IDataObject) || {}) };
-						if (!xd.text && text) xd.text = text;
-						xd.thread = threadPosts;
-						pp.x = xd;
-						perPlatform = pp;
-					}
 				}
+				for (const p of platforms) {
+					const chain = chainOf(p);
+					if (!chain) continue;
+					const pp: IDataObject = { ...(perPlatform || {}) };
+					const draft: IDataObject = { ...((pp[p] as IDataObject) || {}) };
+					if (!draft.text && text) draft.text = text;
+					draft.thread = chain;
+					pp[p] = draft;
+					perPlatform = pp;
+				}
+				const networkOptions: IDataObject = {};
+				if (platforms.includes('x') && xReply) networkOptions.x = { reply: xReply };
+				if (firstComment)
+					for (const p of platforms.filter((n) => FIRST_COMMENT_NETWORKS.includes(n))) {
+						if (p === 'x' && xReply) continue;
+						networkOptions[p] = { ...((networkOptions[p] as IDataObject) || {}), first_comment: firstComment };
+					}
 
 				const brandId = locatorValue(opts.brand ?? opts.brandId);
 				const body: IDataObject = {
@@ -503,7 +596,7 @@ export class PostWire implements INodeType {
 					title: (opts.title as string) || undefined,
 					privacy: (opts.privacy as string) || undefined,
 					brand_id: brandId || undefined,
-					options: platforms.includes('x') && xReply ? { x: { reply: xReply } } : undefined,
+					options: Object.keys(networkOptions).length ? networkOptions : undefined,
 				};
 
 				if (operation === 'schedule') {
@@ -563,10 +656,12 @@ export class PostWire implements INodeType {
 									? `${len} characters, over the ${max} limit`
 									: `${len} characters; PostWire will shorten it to ${max}`,
 							);
-						const thread = p === 'x' && Array.isArray(draft.thread) ? (draft.thread as string[]) : [];
-						thread.forEach((tp, n) => {
-							if (xLength(String(tp)) > 280) issues.push(`thread post ${n + 2}: ${xLength(String(tp))} characters, over 280`);
-						});
+						const thread = THREAD_NETWORKS[p] && Array.isArray(draft.thread) ? (draft.thread as string[]) : [];
+						if (p === 'x')
+							thread.forEach((tp, n) => {
+								if (xLength(String(tp)) > 280) issues.push(`thread post ${n + 2}: ${xLength(String(tp))} characters, over 280`);
+							});
+						const comment = (networkOptions[p] as IDataObject | undefined)?.first_comment;
 						if (!t.trim() && !mediaUrl) issues.push('no text');
 						push({
 							dryRun: true,
@@ -576,7 +671,9 @@ export class PostWire implements INodeType {
 							title: draft.title ?? body.title,
 							tags: draft.tags,
 							...(thread.length ? { thread } : {}),
+							...(THREAD_NETWORKS[p] && draft.thread === true ? { split_into_thread: true } : {}),
 							...(p === 'x' && xReply ? { reply: xReply } : {}),
+							...(comment ? { first_comment: comment } : {}),
 							media_url: mediaUrl || undefined,
 							issues,
 						});
@@ -616,20 +713,23 @@ export class PostWire implements INodeType {
 						});
 					continue;
 				}
-				for (const res of results) {
+				const perNetwork = results.map((res) => {
 					const extra: IDataObject = {};
 					if (res.ok === false) {
 						const hint = hintFor(res.platform as string, String(res.error || ''), res.code as string | undefined);
 						if (hint) extra.hint = hint;
 					}
 					if (response.notice) extra.notice = response.notice;
-					push({ ...res, ...extra });
-				}
+					return { ...res, ...extra };
+				});
 
 				// A 200 whose every network failed must not leave the node green: a scheduled flow
-				// could publish nothing for weeks and never say so.
+				// could publish nothing for weeks and never say so. The per-network items are NOT pushed first: with
+				// "On Error: Continue" that made one item per network plus the error item, so a workflow that mails
+				// failures sent 4 emails for one post that failed on 3 networks. Now it is one error item carrying `results`.
 				const failed = results.filter((res) => res?.ok === false);
 				if (results.length && failed.length === results.length) {
+					failedNetworks = perNetwork;
 					const why = failed
 						.map((f) => `${nameOf((f.platform as string) || '?')}: ${f.error || f.code || 'failed'}`)
 						.join('; ');
@@ -643,12 +743,14 @@ export class PostWire implements INodeType {
 						{ itemIndex: i, description: `${why}${fix ? ` — ${fix}` : ''}` },
 					);
 				}
+				for (const res of perNetwork) push(res);
 			} catch (error) {
 				if (this.continueOnFail()) {
 					out.push({
 						json: {
 							error: (error as Error).message,
 							description: (error as { description?: string }).description ?? undefined,
+							...(failedNetworks ? { ok: false, posted: 0, results: failedNetworks } : {}),
 						},
 						pairedItem: { item: i },
 					});

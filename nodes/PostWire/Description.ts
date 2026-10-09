@@ -256,7 +256,7 @@ export const postProperties: INodeProperties[] = [
 		default: [],
 		required: true,
 		description:
-			'Where to post. Connect them in the PostWire dashboard first — TikTok, Instagram and YouTube are one OAuth click, because PostWire already holds the platform approvals. X is a paid-plan add-on that uses X credits. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+			'Where to post. Connect them in the PostWire dashboard first — TikTok, Instagram and YouTube are one OAuth click, because PostWire already holds the platform approvals. WordPress, Dev.to and Hashnode get an article (title, summary, tags). X is a paid-plan add-on that uses X credits. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		displayOptions: { show: { ...postOps, operation: ['publish', 'schedule', 'generate'] } },
 	},
 	{
@@ -372,7 +372,12 @@ export const postProperties: INodeProperties[] = [
 				description:
 					'A file from a previous node (Google Drive, HTTP Request, Read File…). PostWire hosts it for you.',
 			},
-			{ name: 'None', value: 'none', description: 'Text only — fine for LinkedIn, Facebook, Bluesky, Mastodon, Telegram and Discord' },
+			{
+				name: 'None',
+				value: 'none',
+				description:
+					'Text only — fine for LinkedIn, Facebook, X, Bluesky, Mastodon, Telegram, Discord, Slack, Nostr and the blogs',
+			},
 			{ name: 'URL', value: 'url', description: 'A public https link straight to the .mp4 or image file' },
 		],
 		default: 'none',
@@ -497,6 +502,17 @@ export const postProperties: INodeProperties[] = [
 				displayOptions: { show: { '/operation': ['publish'] } },
 			},
 			{
+				displayName: 'First Comment',
+				name: 'firstComment',
+				type: 'string',
+				typeOptions: { rows: 2 },
+				default: '',
+				placeholder: 'e.g. Full write-up: https://example.com/post',
+				description:
+					"Posted by you right under the post on LinkedIn, X, Bluesky and Mastodon (under the last post of a thread) — the place for a link, so the post keeps its reach. Bluesky takes 300 characters, Mastodon 500, X 280 as X counts them. On X it is the reply under the chain; 'X Reply' wins when both are set.",
+				displayOptions: { show: { '/operation': ['publish', 'schedule'] } },
+			},
+			{
 				displayName: 'Hour',
 				name: 'hour',
 				type: 'number',
@@ -545,6 +561,25 @@ export const postProperties: INodeProperties[] = [
 					'Whether to skip checking that the media URL is public, is a file and not a page, and is under 1 GB before sending it',
 			},
 			{
+				displayName: 'Split Long Text Into a Thread',
+				name: 'splitThread',
+				type: 'boolean',
+				default: false,
+				description:
+					"Whether PostWire should split a text longer than the network's limit into a thread on X, Bluesky and Mastodon (X 280 as X counts, Bluesky 300, Mastodon 500), at paragraph, sentence or word boundaries and never inside a link. Ignored when 'Thread' lists the posts.",
+				displayOptions: { show: { '/operation': ['publish', 'schedule'] } },
+			},
+			{
+				displayName: 'Thread',
+				name: 'thread',
+				type: 'string',
+				typeOptions: { multipleValues: true, multipleValueButtonText: 'Add Post' },
+				default: [],
+				description:
+					"The posts after the main one on X, Bluesky and Mastodon, in order, each a reply to the one before; media stays on the first. Bluesky and Mastodon take up to 9 (10 in all), X up to 25. A post over the network's limit is refused before anything goes out, never cut. 'X Thread', when set, is used for X instead.",
+				displayOptions: { show: { '/operation': ['publish', 'schedule'] } },
+			},
+			{
 				displayName: 'Timezone',
 				name: 'timezone',
 				type: 'string',
@@ -555,11 +590,12 @@ export const postProperties: INodeProperties[] = [
 				displayOptions: { show: { '/operation': ['planWeek', 'schedule'] } },
 			},
 			{
-				displayName: 'Title (YouTube)',
+				displayName: 'Title (YouTube and Blogs)',
 				name: 'title',
 				type: 'string',
 				default: '',
-				description: 'Overrides the YouTube title PostWire writes',
+				description:
+					'Overrides the YouTube title PostWire writes, and the article title on WordPress, Dev.to and Hashnode',
 			},
 			{
 				displayName: 'Visibility',
@@ -591,7 +627,7 @@ export const postProperties: INodeProperties[] = [
 				typeOptions: { multipleValues: true, multipleValueButtonText: 'Add Post' },
 				default: [],
 				description:
-					"Posts 2 to 26 of an X thread, in order, each a reply to the one before; the post itself is the first. Each at most 280 characters as X counts them (a link counts 23). With Smart Distribute, ask for a thread in 'Idea' instead (\"write a thread about…\").",
+					"Posts 2 to 26 of an X thread, in order, each a reply to the one before; the post itself is the first. Each at most 280 characters as X counts them (a link counts 23). Overrides 'Thread' for X only. With Smart Distribute, ask for a thread in 'Idea' instead (\"write a thread about…\").",
 				displayOptions: { show: { '/operation': ['publish', 'schedule'] } },
 			},
 		],
