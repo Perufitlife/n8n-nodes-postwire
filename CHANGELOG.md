@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.6
+
+### Changed
+- **Share links go through instead of being refused.** PostWire turns Google Drive, Dropbox and SharePoint share links into the file itself on its side, and reads the video or image a web page names (`og:video` / `og:image`). The node used to refuse all of those before sending and ask for an extra Download node; now it passes them on, and PostWire answers `media_unreachable` with the reason only when there really is no file. Links to someone else's post and personal OneDrive pages are still named with the fix.
+
 ## 0.4.5
 
 ### Fixed (n8n verification review)

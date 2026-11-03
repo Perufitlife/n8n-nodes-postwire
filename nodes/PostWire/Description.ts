@@ -392,7 +392,7 @@ export const postProperties: INodeProperties[] = [
 		required: true,
 		placeholder: 'e.g. https://example.com/video.mp4',
 		description:
-			'A direct link to the file, reachable without a login. A Google Drive or Dropbox share link opens a web page and will not work — use Binary File instead.',
+			'A link to the video or image, reachable without a login. Google Drive, Dropbox and SharePoint share links work when shared with "anyone with the link" — PostWire fetches the file itself.',
 		displayOptions: {
 			show: { ...postOps, operation: ['publish', 'schedule', 'generate'], mediaSource: ['url'] },
 		},

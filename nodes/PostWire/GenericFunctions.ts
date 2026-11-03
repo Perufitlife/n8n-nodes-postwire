@@ -96,26 +96,39 @@ export function mediaBlocks(platforms: string[], kind: MediaKind): string[] {
 }
 
 /**
- * Links that open a web page rather than the file itself. The networks download the media from
- * the URL, get HTML back, and fail with "could not fetch the video" — the single most common
- * reason a video post failed in PostWire's logs (Sept 2026). Each entry names the fix.
+ * Google Drive, Dropbox and SharePoint / OneDrive for work share links. PostWire turns them into
+ * the file itself on its side, so the node passes them on instead of refusing them: probing them
+ * here would only see the share page.
+ */
+export function isShareLink(url: string): boolean {
+	try {
+		const host = new URL(url).hostname.toLowerCase();
+		return (
+			host === 'drive.google.com' ||
+			host === 'docs.google.com' ||
+			host === 'drive.usercontent.google.com' ||
+			host === 'dropbox.com' ||
+			host === 'www.dropbox.com' ||
+			host.endsWith('.sharepoint.com')
+		);
+	} catch {
+		return false;
+	}
+}
+
+/**
+ * Links PostWire cannot turn into a file: a post on another platform, or a personal OneDrive
+ * share page. Named here instead of failing on the server.
  */
 export function pageLinkFix(url: string): string | null {
 	let host = '';
-	let path = '';
 	try {
-		const u = new URL(url);
-		host = u.hostname.toLowerCase();
-		path = u.pathname + u.search;
+		host = new URL(url).hostname.toLowerCase();
 	} catch {
 		return null;
 	}
-	if (host.endsWith('drive.google.com') || host.endsWith('docs.google.com'))
-		return 'A Google Drive share link opens a web page, not the file. Add a Google Drive node set to "Download", then set \'Media\' to "Binary File" — PostWire hosts it for you.';
-	if (host.endsWith('dropbox.com') && !/[?&](dl=1|raw=1)/.test(path))
-		return 'A Dropbox share link opens a preview page. Change "dl=0" to "dl=1" at the end of the link, or download the file with the Dropbox node and use "Binary File".';
-	if (host === '1drv.ms' || host.endsWith('onedrive.live.com') || host.endsWith('sharepoint.com'))
-		return 'A OneDrive/SharePoint share link opens a web page. Download the file with the Microsoft OneDrive node and set \'Media\' to "Binary File".';
+	if (host === '1drv.ms' || host.endsWith('onedrive.live.com'))
+		return 'A personal OneDrive share link opens a web page. Download the file with the Microsoft OneDrive node and set \'Media\' to "Binary File".';
 	if (
 		host.endsWith('youtube.com') ||
 		host === 'youtu.be' ||
@@ -151,6 +164,7 @@ export async function checkMediaUrl(
 		return `'Media URL' must start with https:// — TikTok, Instagram and YouTube refuse to download media over plain http.`;
 	const page = pageLinkFix(url);
 	if (page) return page;
+	if (isShareLink(url)) return null;
 
 	const probe = async (method: IHttpRequestMethods, headers: IDataObject = {}) =>
 		(await ctx.helpers.httpRequest({
@@ -179,9 +193,9 @@ export async function checkMediaUrl(
 	if (res.statusCode >= 400)
 		return `The media link answered HTTP ${res.statusCode}, so the networks would not be able to download it either. Check the link opens in a private browser window.`;
 
+	// A web page is not refused here: PostWire reads the file the page names (og:video / og:image)
+	// and answers media_unreachable with the reason when there is none.
 	const type = h('content-type').toLowerCase();
-	if (type.includes('text/html'))
-		return `The media link returns a web page (text/html), not a video or image file. Use the direct file link (it usually ends in .mp4 or .jpg), or set 'Media' to "Binary File".`;
 
 	const range = /\/(\d+)\s*$/.exec(h('content-range'));
 	const size = range ? Number(range[1]) : Number(h('content-length')) || 0;
@@ -226,7 +240,7 @@ export function describeFailure(
 			// and names the reason (403/404, a Drive/Dropbox page, an empty file, http://).
 			return {
 				message: serverMsg || 'PostWire could not download the media',
-				description: `Nothing was published. The networks download the file from the link with no login, so it must be a public https link to the file itself — not a share page. Or set 'Media' to "Binary File" (after a Google Drive / HTTP Request / Read File node) and PostWire hosts it for you.`,
+				description: `Nothing was published. The link must open without a login: a file, a Google Drive / Dropbox / SharePoint link shared with "anyone with the link", or a page that names its video or image. Or set 'Media' to "Binary File" (after an HTTP Request or Read File node) and PostWire hosts it for you.`,
 			};
 		case 'invalid_credentials':
 			return {

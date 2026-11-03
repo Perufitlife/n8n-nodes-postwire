@@ -82,7 +82,7 @@ PostWire calls n8n from the internet, so the instance needs a public **https** a
 TikTok and YouTube only publish video; Instagram needs a photo or a video. The networks **download the file from a link**, with no login — so the most common failure is a link that opens a page instead of the file.
 
 - **Media → Binary File** (recommended): put a Google Drive *Download*, HTTP Request or Read File node before PostWire. The node uploads the file (up to 1 GB) and PostWire hosts it for 30 days.
-- **Media → URL**: a public `https://` link straight to the `.mp4`/`.jpg` (up to 1 GB). Before anything is sent, the node checks the link the way the networks will: reachable without a login, a file and not a web page, under 1 GB, and a video when a video network is selected. Google Drive, Dropbox (`dl=0`), OneDrive and "link to a post" URLs are recognised and the error says exactly what to change.
+- **Media → URL**: any public `https://` link (up to 1 GB): the file itself, a Google Drive, Dropbox or SharePoint share link (shared with "anyone with the link" — PostWire fetches the file behind it), or a web page that names its video or image. Before anything is sent, the node checks what it can: reachable without a login, under 1 GB, and a video when a video network is selected. Links to someone else's post (TikTok, YouTube, Instagram, Vimeo) and personal OneDrive pages are named with the fix.
 
 ## Nothing half-publishes, nothing double-posts
 

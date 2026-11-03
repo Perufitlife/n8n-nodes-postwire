@@ -67,18 +67,31 @@ test('a TikTok post with no video is refused before any request, naming the fix'
 	assert.equal(c.calls.length, 0);
 });
 
-test('a Google Drive share link is caught with the Drive-specific fix', () => {
-	const why = G.pageLinkFix('https://drive.google.com/file/d/abc/view?usp=sharing');
-	assert.match(why, /Google Drive node/);
+test('Drive, Dropbox and SharePoint share links go through: PostWire fetches the file itself', async () => {
+	let probed = 0;
+	const c = ctx({ answer: () => (probed++, { statusCode: 200, headers: { 'content-type': 'text/html' } }) });
+	for (const u of [
+		'https://drive.google.com/file/d/1AbCdEfGhIjKlMnOpQrStUvWxYz012345/view?usp=sharing',
+		'https://www.dropbox.com/s/x/clip.mp4?dl=0',
+		'https://drive.google.com/open?id=1AbCdEfGhIjKlMnOpQrStUvWxYz012345',
+		'https://contoso.sharepoint.com/:v:/g/clip',
+	]) {
+		assert.equal(G.pageLinkFix(u), null, u);
+		assert.equal(await G.checkMediaUrl(c, u, ['tiktok', 'youtube']), null, u);
+	}
+	assert.equal(probed, 0, 'a share link is not probed: the probe would only see the share page');
 	assert.equal(G.pageLinkFix('https://cdn.example.com/clip.mp4'), null);
-	assert.match(G.pageLinkFix('https://www.dropbox.com/s/x/clip.mp4?dl=0'), /dl=1/);
-	assert.equal(G.pageLinkFix('https://www.dropbox.com/s/x/clip.mp4?dl=1'), null);
 });
 
-test('the media URL check reads a page served as text/html', async () => {
+test("a link to another platform's post is still named before sending", () => {
+	assert.match(G.pageLinkFix('https://www.tiktok.com/@someone/video/1'), /post on another platform/);
+	assert.match(G.pageLinkFix('https://youtu.be/abc'), /post on another platform/);
+	assert.match(G.pageLinkFix('https://1drv.ms/v/s!abc'), /OneDrive node/);
+});
+
+test('a web page is passed on: PostWire reads the file it names (og:video / og:image)', async () => {
 	const c = ctx({ answer: () => ({ statusCode: 200, headers: { 'content-type': 'text/html; charset=utf-8' } }) });
-	const why = await G.checkMediaUrl(c, 'https://example.com/watch/123', ['tiktok']);
-	assert.match(why, /web page/);
+	assert.equal(await G.checkMediaUrl(c, 'https://example.com/watch/123', ['tiktok']), null);
 });
 
 test('the media URL check falls back to a 1-byte GET when HEAD is refused, and reads the size', async () => {
