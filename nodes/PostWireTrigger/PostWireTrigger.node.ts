@@ -50,23 +50,15 @@ export class PostWireTrigger implements INodeType {
 			categories: ['Marketing & Content', 'Communication'],
 			subcategories: { 'Marketing & Content': ['Social Media'] },
 			alias: [
-				'TikTok',
-				'Instagram',
-				'YouTube',
-				'LinkedIn',
-				'Facebook',
-				'social',
 				'social media',
 				'post published',
 				'post failed',
 				'publish failed',
-				'approval',
 				'content approval',
-				'webhook',
 			],
 			resources: {
 				credentialDocumentation: [
-					{ url: 'https://postwire.io/n8n-social-media-automation/?utm_source=n8n&utm_medium=codex' },
+					{ url: 'https://postwire.io/n8n-social-media-automation/' },
 				],
 				primaryDocumentation: [
 					{ url: 'https://postwire.io/docs/webhooks/' },

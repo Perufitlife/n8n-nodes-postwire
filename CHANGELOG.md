@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.4
+
+### Changed (n8n verification review)
+- **Aliases name only what PostWire is, not other products.** n8n asked for changes to the 0.4.1-0.4.3 updates on 12-oct-2026; 0.4.0, approved on 6-oct, had no aliases. The codex no longer lists networks that have their own n8n nodes (TikTok, Instagram, YouTube, LinkedIn, Facebook, X, Telegram, Discord, Slack, WordPress, Reels, Shorts...) nor bare words like *post*, *publish*, *social*, *approval* or *webhook*: searching those in n8n must find those nodes, not this one. What remains describes PostWire itself (*social media scheduler*, *cross-post*, *content calendar*, *first comment*...). The node description still says which networks it publishes to, and `test/codex.test.js` fails if a network name comes back as an alias.
+- Codex documentation links and the credential help carry no tracking parameters, and the credential help no longer quotes plan limits (they change; the dashboard shows them).
+
 ## 0.4.3
 
 ### Fixed
