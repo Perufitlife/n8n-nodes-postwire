@@ -29,7 +29,7 @@ export class PostWireApi implements ICredentialType {
 			required: true,
 			placeholder: 'pw_live_...',
 			description:
-				'Your PostWire API key (it starts with pw_live_). Create it in your PostWire dashboard: https://postwire.io/dashboard.html',
+				'Your PostWire API key. Get one free at https://postwire.io/dashboard.html?utm_source=n8n&utm_medium=credential — the free plan covers one brand, 20 posts a month and 2 networks per post, with no card.',
 		},
 	];
 

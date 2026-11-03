@@ -48,17 +48,24 @@ export class PostWireTrigger implements INodeType {
 		// community nodes is built from this description and never reads the .node.json (see PostWire.node.ts).
 		codex: {
 			categories: ['Marketing & Content', 'Communication'],
-			subcategories: { 'Marketing & Content': ['Social Media'] },
 			alias: [
+				'TikTok',
+				'Instagram',
+				'YouTube',
+				'LinkedIn',
+				'Facebook',
+				'social',
 				'social media',
 				'post published',
 				'post failed',
 				'publish failed',
+				'approval',
 				'content approval',
+				'webhook',
 			],
 			resources: {
 				credentialDocumentation: [
-					{ url: 'https://postwire.io/n8n-social-media-automation/' },
+					{ url: 'https://postwire.io/n8n-social-media-automation/?utm_source=n8n&utm_medium=codex' },
 				],
 				primaryDocumentation: [
 					{ url: 'https://postwire.io/docs/webhooks/' },

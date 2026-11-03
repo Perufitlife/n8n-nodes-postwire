@@ -6,31 +6,53 @@
 		"Marketing & Content",
 		"Communication"
 	],
-	"subcategories": {
-		"Marketing & Content": [
-			"Social Media"
-		]
-	},
 	"alias": [
+		"TikTok",
+		"TikTok upload",
+		"Instagram",
+		"Instagram Reels",
+		"Reels",
+		"YouTube",
+		"YouTube Shorts",
+		"YouTube upload",
+		"Shorts",
+		"LinkedIn",
+		"Facebook",
+		"Facebook Page",
+		"Twitter",
+		"X post",
+		"X thread",
+		"Bluesky",
+		"Mastodon",
+		"Telegram channel",
+		"Discord",
+		"Slack channel",
+		"Nostr",
+		"WordPress",
+		"Dev.to",
+		"Hashnode",
+		"blog post",
+		"publish article",
+		"social",
 		"social media",
 		"social media post",
-		"social media scheduler",
-		"schedule post",
+		"post",
+		"publish",
+		"auto post",
 		"cross-post",
 		"multi-platform",
-		"auto post",
+		"schedule post",
+		"social media scheduler",
 		"content calendar",
-		"short-form video",
 		"upload video",
+		"short-form video",
 		"repurpose content",
-		"first comment",
-		"blog post",
-		"publish article"
+		"first comment"
 	],
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://postwire.io/n8n-social-media-automation/"
+				"url": "https://postwire.io/n8n-social-media-automation/?utm_source=n8n&utm_medium=codex"
 			}
 		],
 		"primaryDocumentation": [

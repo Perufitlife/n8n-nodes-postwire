@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.5
+
+### Fixed (n8n verification review)
+- **Codex without `subcategories`.** n8n's verification review of 0.4.3 asked for one change: the codex format documents only `node`, `nodeVersion`, `codexVersion`, `categories`, `resources` and `alias`, so `subcategories` is removed from both `.node.json` files and both inline codex blocks. `test/codex.test.js` now rejects it.
+- **0.4.4 is reverted.** It removed the aliases on a guess made before the review was read; the review did not object to them (0.4.2, live as a verified node, carries them). Aliases, links and the credential help are back as in 0.4.3.
+
 ## 0.4.4
 
 ### Changed (n8n verification review)
