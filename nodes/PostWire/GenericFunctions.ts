@@ -576,8 +576,13 @@ export async function generateDrafts(
 	this: IExecuteFunctions,
 	itemIndex: number,
 	body: { prompt: string; platforms: string[]; media_url?: string; brand_voice?: string },
-): Promise<{ drafts: IDataObject; missing: string[] }> {
+): Promise<{ drafts: IDataObject; missing: string[]; nextStep?: IDataObject }> {
 	const first = await apiRequest.call(this, 'POST', '/api/generate', body as unknown as IDataObject, undefined, itemIndex);
+	// Since 3-nov-2026 the API says when the drafts are for networks this account has not connected (next_step,
+	// not_connected, connect_urls): drafts are never published, and nothing in the output said so.
+	const nextStep = first.next_step
+		? ({ next_step: first.next_step, not_connected: first.not_connected, connect_urls: first.connect_urls } as IDataObject)
+		: undefined;
 	const drafts = { ...((first.drafts as IDataObject) || {}) };
 	const empty = () => body.platforms.filter((p) => !String((drafts[p] as IDataObject)?.text ?? '').trim());
 	let missing = empty();
@@ -598,5 +603,5 @@ export async function generateDrafts(
 		}
 		missing = empty();
 	}
-	return { drafts, missing };
+	return { drafts, missing, ...(nextStep ? { nextStep } : {}) };
 }

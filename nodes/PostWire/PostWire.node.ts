@@ -446,7 +446,7 @@ export class PostWire implements INodeType {
 
 				if (operation === 'generate') {
 					const prompt = this.getNodeParameter('prompt', i) as string;
-					const { drafts, missing } = await generateDrafts.call(this, i, {
+					const { drafts, missing, nextStep } = await generateDrafts.call(this, i, {
 						prompt,
 						platforms,
 						media_url: mediaUrl || undefined,
@@ -455,6 +455,7 @@ export class PostWire implements INodeType {
 					push({
 						drafts,
 						...(missing.length ? { missing } : {}),
+						...(nextStep || {}),
 						platforms,
 						media_url: mediaUrl || undefined,
 						preview: draftsPreview(drafts),
