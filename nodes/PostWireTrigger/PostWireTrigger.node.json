@@ -7,19 +7,11 @@
 		"Communication"
 	],
 	"alias": [
-		"TikTok",
-		"Instagram",
-		"YouTube",
-		"LinkedIn",
-		"Facebook",
-		"social",
 		"social media",
 		"post published",
 		"post failed",
 		"publish failed",
-		"approval",
-		"content approval",
-		"webhook"
+		"content approval"
 	],
 	"resources": {
 		"credentialDocumentation": [

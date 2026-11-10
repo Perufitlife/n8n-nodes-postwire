@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.8
+
+### Changed (n8n verification review)
+- **Aliases name only what PostWire is, again.** n8n's review of 0.4.7 asked to remove the other platforms' names (TikTok, Instagram, Reels, YouTube, Shorts, LinkedIn, Facebook, X, Bluesky, Mastodon, Telegram, Discord, Slack, Nostr, WordPress, Dev.to, Hashnode) and the bare words (*post*, *publish*, *social*, *approval*, *webhook*) from both nodes, keeping the trimmed list shipped in 0.4.4. That list is back in both `.node.json` files and both inline codex blocks; the node description and README still name the networks PostWire publishes to. `test/codex.test.js` fails if a network or a bare word returns as an alias.
+
 ## 0.4.6
 
 ### Changed

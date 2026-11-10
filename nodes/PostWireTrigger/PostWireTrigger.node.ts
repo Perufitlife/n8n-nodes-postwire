@@ -49,19 +49,11 @@ export class PostWireTrigger implements INodeType {
 		codex: {
 			categories: ['Marketing & Content', 'Communication'],
 			alias: [
-				'TikTok',
-				'Instagram',
-				'YouTube',
-				'LinkedIn',
-				'Facebook',
-				'social',
 				'social media',
 				'post published',
 				'post failed',
 				'publish failed',
-				'approval',
 				'content approval',
-				'webhook',
 			],
 			resources: {
 				credentialDocumentation: [
