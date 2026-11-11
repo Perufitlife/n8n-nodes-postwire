@@ -7,12 +7,45 @@ import {
 	type IHttpRequestMethods,
 	type IHttpRequestOptions,
 	type ILoadOptionsFunctions,
+	type INodeCredentialDescription,
+	type INodeProperties,
 	type JsonObject,
 } from 'n8n-workflow';
 
 export const BASE = 'https://postwire.io';
 // Tagged so an account opened from n8n is attributed to the node (PostWire's signup reads the first-touch utm).
 export const DASHBOARD = `${BASE}/dashboard.html?utm_source=n8n&utm_medium=node`;
+
+// Two ways to sign in. "API Key" stays the default so every saved workflow keeps working untouched; "Connect Account"
+// is the one-button OAuth2 connection (credentials/PostWireOAuth2Api.credentials.ts): no key to copy.
+export const authenticationProperty: INodeProperties = {
+	displayName: 'Authentication',
+	name: 'authentication',
+	type: 'options',
+	options: [
+		{ name: 'API Key', value: 'apiKey', description: 'Paste a key from the PostWire dashboard' },
+		{ name: 'Connect Account (OAuth2)', value: 'oAuth2', description: 'Sign in to PostWire with one button, no key to copy' },
+	],
+	default: 'apiKey',
+};
+export const credentialsDescription: INodeCredentialDescription[] = [
+	{ name: 'postWireApi', required: true, displayOptions: { show: { authentication: ['apiKey'] } } },
+	{ name: 'postWireOAuth2Api', required: true, displayOptions: { show: { authentication: ['oAuth2'] } } },
+];
+const CONNECT_CREDENTIAL = 'postWireOAuth2Api';
+
+/** The credential type the node's Authentication parameter names (any context: execute, load options, hooks). */
+export function credentialType(this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions): string {
+	let auth: unknown = 'apiKey';
+	try {
+		auth = 'getInputData' in this
+			? (this as IExecuteFunctions).getNodeParameter('authentication', 0, 'apiKey')
+			: (this as IHookFunctions).getNodeParameter('authentication', 'apiKey');
+	} catch {
+		auth = 'apiKey';
+	}
+	return auth === 'oAuth2' ? CONNECT_CREDENTIAL : 'postWireApi';
+}
 
 export type MediaNeed = 'video' | 'any' | null;
 
@@ -454,15 +487,32 @@ export async function apiRequest(
 		json: true,
 		returnFullResponse: true,
 		ignoreHttpStatusErrors: true,
+		// Also on the OAuth2 credential, which has no headers of its own: the server tells n8n traffic apart by it.
+		headers: { 'X-PostWire-Source': 'n8n' },
 	};
 	if (body) options.body = body;
 	if (qs) options.qs = qs;
 	let res: { statusCode: number; body: IDataObject };
 	try {
-		res = (await this.helpers.httpRequestWithAuthentication.call(this, 'postWireApi', options)) as {
+		const cred = credentialType.call(this);
+		res = (await this.helpers.httpRequestWithAuthentication.call(this, cred, options)) as {
 			statusCode: number;
 			body: IDataObject;
 		};
+		// The access token lasts an hour. n8n refreshes it only when the request FAILS with a 401, and this request
+		// reads its own errors (ignoreHttpStatusErrors), so on a 401 it is sent once more letting it fail: n8n then
+		// refreshes the token and repeats it. Whatever that second answer is, it replaces the first.
+		if (cred === CONNECT_CREDENTIAL && res.statusCode === 401) {
+			try {
+				res = (await this.helpers.httpRequestWithAuthentication.call(this, cred, { ...options, ignoreHttpStatusErrors: false })) as {
+					statusCode: number;
+					body: IDataObject;
+				};
+			} catch (retryError) {
+				const r = (retryError as { response?: { status?: number; data?: unknown } }).response;
+				if (r && typeof r.status === 'number') res = { statusCode: r.status, body: (r.data ?? {}) as IDataObject };
+			}
+		}
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject, {
 			itemIndex,

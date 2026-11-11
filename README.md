@@ -23,6 +23,10 @@ cd ~/.n8n/nodes && npm install n8n-nodes-postwire
 
 ## Credentials
 
+**One button (OAuth2).** In the node, set **Authentication** to *Connect Account (OAuth2)*, create a **PostWire OAuth2 API** credential and press **Connect my account**: PostWire opens its sign-in page (Google, email code or an existing key), shows which n8n is asking, and n8n keeps the token. Nothing to copy. Works on n8n Cloud and self-hosted n8n (https, or http on localhost / your local network).
+
+**Or with an API key** (the default, and what workflows saved before 0.5.0 use):
+
 1. Create a free account at [postwire.io/dashboard.html](https://postwire.io/dashboard.html?utm_source=n8n&utm_medium=readme) and connect the networks you want to post to (Accounts).
 2. Copy your API key from **API & MCP**.
 3. In n8n, create a **PostWire API** credential, paste the key and press **Test** — it calls `GET /api/me`, so a wrong key fails now rather than at publish time.

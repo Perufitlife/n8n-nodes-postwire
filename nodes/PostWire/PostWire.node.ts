@@ -41,6 +41,8 @@ import {
 	tzOffsetMinutes,
 	uploadBinary,
 	xLength,
+	authenticationProperty,
+	credentialsDescription,
 } from './GenericFunctions';
 import { legacyProperties } from './LegacyDescription';
 
@@ -114,8 +116,9 @@ export class PostWire implements INodeType {
 		defaults: { name: 'PostWire' },
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
-		credentials: [{ name: 'postWireApi', required: true }],
+		credentials: credentialsDescription,
 		properties: [
+			authenticationProperty,
 			...legacyProperties,
 			resourceProperty,
 			...operationProperties,

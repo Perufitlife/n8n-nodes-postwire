@@ -11,7 +11,7 @@ import {
 	type JsonObject,
 } from 'n8n-workflow';
 
-import { apiRequest, PLATFORMS } from '../PostWire/GenericFunctions';
+import { apiRequest, authenticationProperty, credentialsDescription, PLATFORMS } from '../PostWire/GenericFunctions';
 import { EVENTS, networksOf, signatureProblem } from './WebhookFunctions';
 
 type StoredWebhook = { webhookId?: string; secret?: string; events?: string[] };
@@ -68,7 +68,7 @@ export class PostWireTrigger implements INodeType {
 		defaults: { name: 'PostWire Trigger' },
 		inputs: [],
 		outputs: [NodeConnectionTypes.Main],
-		credentials: [{ name: 'postWireApi', required: true }],
+		credentials: credentialsDescription,
 		webhooks: [
 			{
 				name: 'default',
@@ -78,6 +78,7 @@ export class PostWireTrigger implements INodeType {
 			},
 		],
 		properties: [
+			authenticationProperty,
 			{
 				displayName:
 					'PostWire calls this workflow from the internet, so n8n must be reachable at a public https address. When the workflow is activated the node adds a signed webhook to your PostWire account; when it is deactivated, the node removes it.',

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.0
+
+### Added
+- **Connect Account (OAuth2): a one-button connection.** Both nodes get an **Authentication** parameter. *API Key* stays the default, so saved workflows are untouched; *Connect Account (OAuth2)* uses the new **PostWire OAuth2 API** credential: n8n opens PostWire's sign-in and consent page (it names the n8n asking) and keeps the token, with no key to copy. It is PostWire's public PKCE client `postwire-n8n`; the token works only on PostWire's REST API, lasts an hour and is refreshed by n8n (on a 401 the node lets the request fail once so n8n refreshes it and repeats it).
+- Every request carries `X-PostWire-Source: n8n`, now also on the OAuth2 credential.
+
 ## 0.4.8
 
 ### Changed (n8n verification review)
